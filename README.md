@@ -78,7 +78,13 @@
 
 ## 版本更新记录
 
-### v2.1.0（当前）
+### v2.1.1（当前）
+- **修复 v2.1.0 工具栏消失问题** — 去掉 `window.self !== window.top` iframe 检测（超星页面框架结构导致顶层窗口被误判为 iframe，脚本直接 return 不创建 UI）
+- **改为"允许执行 + UI 单例"策略** — 脚本可多次执行不报错，但通过唯一 ID `__cxdl_bar_unique_v211` 确保工具栏只创建一次
+- **重复运行感知** — 第二次及之后的执行会检测到 `_isDuplicateRun` 标记，跳过 buildBar() 但仍执行 doScan()
+- **保留全部兜底清理机制** — MutationObserver + 3秒定时器持续清除旧版残留
+
+### v2.1.0
 - **彻底重写防重复系统（5层防护）**：
   - Layer 0: **iframe 检测** — 跳过所有 iframe 中的执行（`window.self !== window.top`），这是导致脚本执行两次的主因
   - Layer 1: **全局标记** `__cxdl_v210` + 兼容旧版 `_cxdl_v209`/`_cxdl_v208`
