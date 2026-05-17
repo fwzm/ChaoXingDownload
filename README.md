@@ -78,7 +78,14 @@
 
 ## 版本更新记录
 
-### v2.1.4（当前）
+### v2.1.6（当前）
+- **innerHTML 守护机制**：每 3 秒检查工具栏标题文本，发现被 KCDL 篡改为 `[KCDL]` 时立即恢复为 `[CXDL]`
+- **防止按钮丢失**：同时检查 `.mode-btn` 是否存在，被删除时自动重建
+
+### v2.1.5
+- **强制内联样式**：工具栏创建后强制设置 `display:flex!important; z-index:2147483647!important`，解决被 CSS 隐藏导致的工具栏消失问题
+
+### v2.1.4
 - **三管齐下的核弹级清理策略**：
   - **Strategy A — CSS 注入隐藏**：注入 CSS 规则，给标记了 `data-cxdl-nuke` 属性的元素设置 `display:none !important`，同时用 ID 选择器确保我们自己的工具栏始终可见
   - **Strategy B — JS 多方法删除**（4 种扫描 + iframe 穿透）：
