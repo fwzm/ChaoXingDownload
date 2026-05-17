@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ChaoXing Course Downloader
 // @namespace    https://github.com/fwzm/ChaoXingDownload
-// @version      2.1.3
+// @version      2.1.4
 // @description  Download course resources from ChaoXing (mooc2-ans) - PPT/PDF/DOC/Video
 // @author       fwzm
 // @match        *://*.chaoxing.com/*
@@ -19,150 +19,201 @@
 (function() {
     'use strict';
 
-    // ====== ANTI-DUP: aggressive foreign-script cleanup (v2.1.3) ======
-    // Problem: User has OTHER ChaoXing download scripts installed (KCDL v3.x, old CXDL versions, etc.)
-    // They all create fixed-top toolbars that conflict with ours.
-    // Solution: Aggressively detect and remove ANY non-CXDL download toolbar.
+    // ====== ANTI-DUP: nuclear cleanup v2.1.4 (CSS hide + JS remove) ======
+    // Problem confirmed: KCDL/other scripts create toolbars that JS DOM queries cannot find.
+    // Possible reasons: Shadow DOM, late loading after our cleanup, position:sticky, etc.
     //
-    // Strategy:
-    //   1. Allow multiple script invocations (don't block execution)
-    //   2. Singleton UI creation via unique ID
-    //   3. AGGRESSIVELY remove other scripts' UI elements
-    //   4. MutationObserver + interval cleanup as fallback
+    // NEW STRATEGY (dual approach):
+    //   A. CSS injection: Hide ALL fixed/sticky elements near page top, show only ours
+    //   B. JS removal: Multiple detection methods as backup
+    //   C. elementFromPoint: Physically detect what's visible at viewport top
 
     var _isDuplicateRun = false;
+    var OUR_BAR_ID = '__cxdl_bar_unique_v214';
+    var OUR_FLOAT_ID = '__cxdl_float_unique_v214';
 
     // Layer 1: Global flag
-    if (unsafeWindow.__cxdl_v213) {
-        _isDuplicateRun = true;
-        console.log('[CXDL] v2.1.3 noticed re-run', location.href);
-    }
-    unsafeWindow.__cxdl_v213 = true;
-    unsafeWindow.__cxdl_v212 = true;
-    unsafeWindow.__cxdl_v211 = true;
-    unsafeWindow.__cxdl_v210 = true;
-    unsafeWindow._cxdl_v209 = true;
-    unsafeWindow._cxdl_v208 = true;
+    if (unsafeWindow.__cxdl_v214) { _isDuplicateRun = true; }
+    unsafeWindow.__cxdl_v214 = true;
+    unsafeWindow.__cxdl_v213 = true; unsafeWindow.__cxdl_v212 = true; unsafeWindow.__cxdl_v211 = true;
+    unsafeWindow.__cxdl_v210 = true; unsafeWindow._cxdl_v209 = true; unsafeWindow._cxdl_v208 = true;
 
     // Layer 2: DOM marker
-    try { document.documentElement.setAttribute('data-cxdl-active', 'v2.1.3'); } catch(e) {}
+    try { document.documentElement.setAttribute('data-cxdl-active', 'v2.1.4'); } catch(e) {}
 
-    // ====== Nuke function: remove ALL non-CXDL download toolbars ======
-    // v2.1.3: Complete rewrite using getComputedStyle + text search + brute force
-    var _debugLog = false; // set true to see detailed element scanning info
+    // ====== STRATEGY A: CSS Nuclear Hiding ======
+    // This hides ANY fixed/sticky element in the top 80px of the viewport,
+    // then explicitly shows only OUR toolbar via ID-specific override.
+    // This works even for Shadow DOM elements (if they inherit styles from light DOM).
+    GM_addStyle([
+        /* Hide ALL fixed/sticky bars at the top of the page */
+        '[data-cxdl-nuke] { display: none !important; visibility: hidden !important; pointer-events: none !important; height: 0 !important; overflow: hidden !important; }',
+        /* Our own bar - always visible */
+        '#' + OUR_BAR_ID + ' { display: flex !important; visibility: visible !important; pointer-events: auto !important; height: auto !important; }',
+        '#' + OUR_FLOAT_ID + ' { display: block !important; visibility: visible !important; pointer-events: auto !important; }'
+    ].join(''));
+
+    // ====== STRATEGY B: JS Multi-Method Removal ======
     function nukeForeignToolbars() {
+        var removed = 0;
         try {
-            var removedCount = 0;
-            var ourBarId = '__cxdl_bar_unique_v213';
-            var ourFloatId = '__cxdl_float_unique_v213';
+            var ourId = OUR_BAR_ID;
 
-            // ====== PASS 1: getComputedStyle scan — find all fixed elements at top ======
-            var allElements = document.body ? document.body.getElementsByTagName('*') : [];
-            for (var idx = 0; idx < allElements.length; idx++) {
-                var el = allElements[idx];
+            // B1: getComputedStyle scan — find fixed/sticky elements at top
+            var els = document.body ? document.body.getElementsByTagName('*') : [];
+            for (var i = 0; i < els.length; i++) {
                 try {
-                    var cs = window.getComputedStyle(el);
-                    if (cs.position !== 'fixed') continue;
-                    var rect = el.getBoundingClientRect();
-                    // Fixed element in top area (y < 60px)
-                    if (rect.top < -5 || rect.top > 60) continue;
-                    // Skip tiny elements (< 100px wide, likely not a toolbar)
-                    if (rect.width < 100 || rect.height < 20) continue;
+                    var el = els[i];
+                    if (el.id === ourId || el.id === OUR_FLOAT_ID) continue;
+                    if (el.className === 'cxdl-toast') continue;
 
-                    var eid = el.id || '';
-                    var ecls = el.className || '';
+                    var cs = window.getComputedStyle(el);
+                    var pos = cs.position;
+                    if (pos !== 'fixed' && pos !== 'sticky') continue;
+
+                    var r = el.getBoundingClientRect();
+                    if (r.top > 70 || r.top < -10) continue;
+                    if (r.width < 150 || r.height < 15 || r.height > 100) continue;
+
+                    var cls = (el.className || '').toString();
                     var txt = (el.textContent || '').trim();
 
-                    // NEVER touch our own elements
-                    if (eid === ourBarId || eid === ourFloatId) continue;
-                    if (ecls === 'cxdl-toast') continue;
+                    console.log('[CXDL-SCAN] pos=' + pos + ' top=' + Math.round(r.top) +
+                        ' id=' + (el.id || '-') +
+                        ' cls=' + cls.substring(0,40) +
+                        ' txt=' + txt.substring(0,50) +
+                        ' bg=' + (cs.backgroundColor||'-').substring(0,20));
 
-                    if (_debugLog) console.log('[CXDL-DBG] fixed-top el:', eid, ecls.substring(0,30), '| txt:', txt.substring(0,40), '| size:', Math.round(rect.width)+'x'+Math.round(rect.height));
+                    // Mark for removal via attribute (CSS will hide it)
+                    var shouldRemove = false;
 
-                    // Check if it's a foreign download toolbar
-                    var isForeignToolbar = false;
+                    // Text-based detection
+                    if (/\[KCDL\]|Resource DL|No IDs.*Materials|Scan.*Select DL/i.test(txt)) shouldRemove = true;
+                    // Class-based
+                    if (/kcdl|kc-dl|kcbar|kcbanner/i.test(cls)) shouldRemove = true;
+                    // Blue-ish background bar with download-like buttons
+                    if (/(#0d39|#1565|#1976|rgb\(13,\s*57|rgb\(21,\s*101|rgb\(25,\s*118)/i.test(cs.backgroundColor || '')
+                        && /Scan|DL|PPT|PDF|All DL/.test(txt)
+                        && r.width > 300 && r.height < 80) shouldRemove = true;
+                    // Any fixed bar that looks like a download toolbar AND isn't ours
+                    if (/Scan|Select\s+DL|All\s+DL|^No IDs/.test(txt) && r.width > 400 && r.height < 60) shouldRemove = true;
 
-                    // Check 1: Text contains known markers
-                    if (/\[KCDL\]|Resource DL|\[CXDL\].*Resource/i.test(txt)) isForeignToolbar = true;
-                    // Check 2: Contains download-toolbar-like buttons AND is wide enough for a bar
-                    if (/Scan\b.*DL|Select\s+DL|All\s+DL|^No IDs.*go to Materials/i.test(txt)
-                        && rect.width > 300 && rect.height < 70) {
-                        isForeignToolbar = true;
-                    }
-                    // Check 3: Known foreign class names
-                    if (/kcdl-bar|kcdl-float|kcdl-panel|kc-dl/i.test(ecls)) isForeignToolbar = true;
-                    // Check 4: Blue/dark background fixed bar with buttons (heuristic for KCDL-style UIs)
-                    var bgColor = cs.backgroundColor || '';
-                    if (/(rgb\(13,\s*57|rgb\(21,\s*101|#0d394f|#1565c0)/i.test(bgColor)
-                        && /Scan|DL|PPT|PDF|资源|课件|下载/.test(txt)
-                        && rect.width > 300 && rect.height < 80) {
-                        isForeignToolbar = true;
-                    }
-
-                    if (isForeignToolbar) {
-                        console.log('[CXDL] REMOVING foreign toolbar:', 'id='+(eid||'none'), 'class='+(ecls||'').substring(0,40), 'text='+(txt||'').substring(0,50));
-                        el.remove();
-                        removedCount++;
-                    }
-                } catch(err) {}
-            }
-
-            // ====== PASS 2: Text content search — hunt [KCDL] anywhere ======
-            // Some scripts may use non-fixed positioning or shadow DOM
-            var treeWalker = document.createTreeWalker(
-                document.body || document.documentElement,
-                NodeFilter.SHOW_ELEMENT,
-                null, false
-            );
-            var node;
-            while ((node = treeWalker.nextNode())) {
-                try {
-                    var ntxt = (node.textContent || '').trim();
-                    if (ntxt.length < 6 || ntxt.length > 200) continue; // skip too short/long
-                    var nid = node.id || '';
-                    if (nid === ourBarId || nid === ourFloatId) continue;
-                    // Look for KCDL marker text specifically
-                    if (ntxt.indexOf('[KCDL]') >= 0 || (ntxt.indexOf('Resource DL') >= 0 && !/__cxdl_bar_unique/.test(nid))) {
-                        // Verify it looks like a toolbar container (has children, reasonable size)
-                        var nrect = node.getBoundingClientRect();
-                        if (nrect.width > 200 && nrect.height > 20 && nrect.height < 100) {
-                            console.log('[CXDL] REMOVING (text-match):', (node.className||'').substring(0,30), '| text:', ntxt.substring(0,50));
-                            node.remove();
-                            removedCount++;
-                        }
+                    if (shouldRemove) {
+                        console.log('[CXDL] NUKING:', cls.substring(0,30), '|', txt.substring(0,45));
+                        el.setAttribute('data-cxdl-nuke', '');
+                        // Also try actual removal
+                        try { el.remove(); removed++; } catch(ex) {}
                     }
                 } catch(e2) {}
             }
 
-            // ====== PASS 3: ID/selector based cleanup ======
-            [
-                '#_cxdl_bar', '#_cxdl_bar2', '#_kcdl_bar',
-                '.kcdl-bar', '.kcdl-float', '.kcdl-panel',
-                '[id*="kcdl"]', '[class*="kcdl"]'
-            ].forEach(function(sel) {
+            // B2: TreeWalker text search
+            if (document.body) {
+                var tw = document.createTreeWalker(document.body, NodeFilter.SHOW_ELEMENT, null, false);
+                var nd;
+                while ((nd = tw.nextNode())) {
+                    try {
+                        var t = (nd.textContent || '').trim();
+                        if (t.length < 5 || t.length > 300) continue;
+                        if (nd.id === ourId) continue;
+                        if (t.indexOf('[KCDL]') >= 0 || (t.indexOf('[CXDL]') >= 0 && t.indexOf('Resource') >= 0)) {
+                            var nr = nd.getBoundingClientRect();
+                            if (nr.width > 100 && nr.height > 15 && nr.height < 120) {
+                                console.log('[CXDL] NUKING(text):', (nd.className||'').substring(0,30));
+                                nd.setAttribute('data-cxdl-nuke', '');
+                                try { nd.remove(); removed++; } catch(ex3) {}
+                            }
+                        }
+                    } catch(e4) {}
+                }
+            }
+
+            // B3: Selector-based
+            ['#_cxdl_bar', '#_cxdl_bar2', '#_kcdl_bar',
+             '.kcdl-bar', '.kcdl-float', '.kcdl-panel', '.kcdl-wrap',
+             '[id*="kcdl"]', '[class*="kcdl"]'].forEach(function(s) {
                 try {
-                    document.querySelectorAll(sel).forEach(function(el){
-                        if (el.id !== ourBarId && el.id !== ourFloatId) {
-                            console.log('[CXDL] REMOVING (selector):', sel);
-                            el.remove(); removedCount++;
+                    document.querySelectorAll(s).forEach(function(x) {
+                        if (x.id !== ourId && x.id !== OUR_FLOAT_ID) {
+                            console.log('[CXDL] NUKING(sel):', s);
+                            x.setAttribute('data-cxdl-nuke', '');
+                            try { x.remove(); removed++; } catch(ex5) {}
                         }
                     });
-                } catch(e3) {}
+                } catch(e6) {}
             });
 
-            if (removedCount > 0) console.log('[CXDL] Cleanup done, removed', removedCount, 'foreign element(s)');
-        } catch(e) {
-            console.error('[CXDL] nukeForeignToolbars error:', e);
+            // B4: iframe penetration — try to clean inside same-origin iframes
+            try {
+                document.querySelectorAll('iframe').forEach(function(fr) {
+                    try {
+                        var doc = fr.contentDocument || fr.contentWindow.document;
+                        if (!doc) return;
+                        doc.querySelectorAll('*').forEach(function(fe) {
+                            var fcs = window.getComputedStyle(fe);
+                            if (fcs.position === 'fixed' && fe.getBoundingClientRect().top < 60) {
+                                var ft = (fe.textContent || '').trim();
+                                if (/\[KCDL\]|\[CXDL\]|Resource DL/.test(ft)) {
+                                    console.log('[CXDL] NUKING(iframe):', (fe.className||'').substring(0,30));
+                                    fe.remove(); removed++;
+                                }
+                            }
+                        });
+                    } catch(ife) {} // cross-origin iframes will throw, ignore
+                });
+            } catch(e7) {}
+
+        } catch(err) {
+            console.error('[CXDL] nukeForeignToolbars error:', err);
         }
+        if (removed > 0) console.log('[CXDL] Total nuked:', removed);
     }
 
-    // Initial aggressive cleanup
+    // Run immediately + delayed + periodic
     nukeForeignToolbars();
-
-    // Also do a delayed cleanup after 1s (other scripts may load later)
-    setTimeout(nukeForeignToolbars, 1000);
+    setTimeout(nukeForeignToolbars, 500);
+    setTimeout(nukeForeignToolbars, 1500);
     setTimeout(nukeForeignToolbars, 3000);
-    setTimeout(nukeForeignToolbars, 6000);
+    setTimeout(nukeForeignToolbars, 5000);
+    setTimeout(nukeForeignToolbars, 8000);
+
+    // ====== STRATEGY C: elementFromPoint — detect what's physically visible at top ======
+    function checkTopArea() {
+        try {
+            // Check points across the top area of the viewport
+            for (var px = 10; px <= Math.min(window.innerWidth - 10, 800); px += 200) {
+                for (var py = 5; py <= 50; py += 15) {
+                    var hit = document.elementFromPoint(px, py);
+                    if (!hit) continue;
+                    if (hit.id === OUR_BAR_ID || hit.id === OUR_FLOAT_ID) continue;
+                    // Walk up to find the positioned container
+                    var walkUp = hit;
+                    while (walkUp && walkUp !== document.body) {
+                        var wcs = window.getComputedStyle(walkUp);
+                        if (wcs.position === 'fixed' || wcs.position === 'sticky') {
+                            var wtxt = (walkUp.textContent || '').trim().substring(0,60);
+                            var wcls = (walkUp.className || '').toString().substring(0,40);
+                            console.log('[CXDL-POINT] ('+px+','+py+') hit fixed:', wcls, '|', wtxt);
+                            // If this looks like a foreign toolbar, nuke it
+                            if ((/\[KCDL\]|Resource DL|No IDs.*Materials/.test(wtxt) ||
+                                 /kcdl/i.test(wcls)) &&
+                                walkUp.id !== OUR_BAR_ID) {
+                                console.log('[CXDL] POINT-NUKE:', wcls);
+                                walkUp.setAttribute('data-cxdl-nuke', '');
+                                try { walkUp.remove(); } catch(e8) {}
+                            }
+                            break;
+                        }
+                        walkUp = walkUp.parentElement;
+                    }
+                }
+            }
+        } catch(ep) {}
+    }
+    setTimeout(checkTopArea, 2000);
+    setTimeout(checkTopArea, 6000);
+
+    console.log('[CXDL] v2.1.4 starting' + (_isDuplicateRun ? ' [dup]' : ''), location.href);
 
     // ====== DOWNLOAD MODE (user choice) ======
     // 'gm' = GM_download (Tampermonkey native download - filename from headers, no blob URL needed)
@@ -679,32 +730,21 @@
     // ====== BUILD TOOLBAR (singleton) ======
     var _barInstance = null;  // track our single toolbar instance
     function buildBar(){
-        // If this is a duplicate script invocation and bar already exists, skip entirely
         if (_isDuplicateRun) {
-            _barInstance = document.getElementById('__cxdl_bar_unique_v213');
-            if (_barInstance) {
-                console.log('[CXDL] Duplicate run: toolbar exists, skipping buildBar');
-                setTimeout(doScan, 500);
-                return;
-            }
+            _barInstance = document.getElementById(OUR_BAR_ID);
+            if (_barInstance) { setTimeout(doScan, 500); return; }
         }
-
-        // Singleton: if our bar already exists from a previous run, just reuse it
-        _barInstance = document.getElementById('__cxdl_bar_unique_v213');
-        if (_barInstance) {
-            console.log('[CXDL] Toolbar already exists, skipping buildBar');
-            setTimeout(doScan, 500);
-            return;
-        }
+        _barInstance = document.getElementById(OUR_BAR_ID);
+        if (_barInstance) { setTimeout(doScan, 500); return; }
 
         // Clean up any remaining old toolbars (including foreign scripts)
         nukeForeignToolbars();
         try { document.querySelectorAll('.cxdl-bar').forEach(function(el){el.remove();}); } catch(e){}
 
         var bar=document.createElement('div');
-        bar.id='__cxdl_bar_unique_v213';  // unique ID that no other version will use
+        bar.id=OUR_BAR_ID;
         bar.className='cxdl-bar';
-        bar.setAttribute('data-cxdl-version', '2.1.3');
+        bar.setAttribute('data-cxdl-version', '2.1.4');
         bar.innerHTML='<span class="title">[CXDL]</span><span id="_cxdl_st2" class="status">Loading...</span>';
 
         function mkBtn(label,cls,hnd){
@@ -717,7 +757,6 @@
         bar.appendChild(mkBtn('DOC','',function(){showModal('DOC');}));
         bar.appendChild(mkBtn('All DL','pri',dlAll));
 
-        // Download mode toggle button
         _modeBtnEl=document.createElement('button');
         _modeBtnEl.className='cxdl-btn mode-btn'+(_dlMode==='browser'?' active':'');
         _modeBtnEl.textContent=_dlMode==='gm'?'[GM]':'[BRW]';
@@ -731,16 +770,15 @@
         }else{
             document.addEventListener('DOMContentLoaded',function(){document.body.appendChild(bar);});
         }
-
         _barInstance = bar;
 
         // Float button (singleton check by unique ID)
-        if(!document.getElementById('__cxdl_float_unique_v213')){
+        if(!document.getElementById(OUR_FLOAT_ID)){
             var fb=document.createElement('button');
-            fb.id='__cxdl_float_unique_v213';
+            fb.id=OUR_FLOAT_ID;
             fb.className='cxdl-float';fb.textContent='v2';fb.title='Toggle';
             fb.addEventListener('click',function(){
-                var b=document.getElementById('__cxdl_bar_unique_v213');
+                var b=document.getElementById(OUR_BAR_ID);
                 if(b)b.style.display=b.style.display==='none'?'block':'none';
                 else doScan();
             });
@@ -756,12 +794,11 @@
     function killDupes() {
         try {
             nukeForeignToolbars(); // always clean foreign first
-            // Our own duplicates
             var bars = document.querySelectorAll('.cxdl-bar');
             if (bars.length > 1) {
                 var kept = null;
                 for (var bi = 0; bi < bars.length; bi++) {
-                    if (bars[bi].id === '__cxdl_bar_unique_v213') { kept = bars[bi]; break; }
+                    if (bars[bi].id === OUR_BAR_ID) { kept = bars[bi]; break; }
                 }
                 if (!kept) kept = bars[bars.length - 1];
                 for (var bj = 0; bj < bars.length; bj++) {
@@ -772,7 +809,7 @@
             if (floats.length > 1) {
                 var fkept = null;
                 for (var fi = 0; fi < floats.length; fi++) {
-                    if (floats[fi].id === '__cxdl_float_unique_v213') { fkept = floats[fi]; break; }
+                    if (floats[fi].id === OUR_FLOAT_ID) { fkept = floats[fi]; break; }
                 }
                 if (!fkept) fkept = floats[floats.length - 1];
                 for (var fj = 0; fj < floats.length; fj++) {
@@ -789,7 +826,7 @@
         killDupes();
         var ids=collectIds();unsafeWindow._cxdl_ids=ids.map(function(x){return x.id;});injectBtns();
         setStatus(ids.length?(ids.length+' resources | click buttons to DL'):'No IDs - go to Materials tab & click Scan');
-        console.log('[CXDL] v2.1.3 scan:',ids.length);
+        console.log('[CXDL] v2.1.4 scan:',ids.length);
     }
 
     // ====== ENTRY ======
@@ -797,5 +834,5 @@
         buildBar();
         try{_obs.observe(document.body,{childList:true,subtree:true});}catch(e){}
     }
-    console.log('[CXDL] v2.1.3 loaded | GM_download available:',_gmDownloadAvailable,'| mode:',_dlMode);
+    console.log('[CXDL] v2.1.4 loaded | GM_download available:',_gmDownloadAvailable,'| mode:',_dlMode);
 })();
