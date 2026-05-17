@@ -78,13 +78,15 @@
 
 ## 版本更新记录
 
-### v2.1.1（当前）
-- **修复 v2.1.0 工具栏消失问题** — 去掉 `window.self !== window.top` iframe 检测（超星页面框架结构导致顶层窗口被误判为 iframe，脚本直接 return 不创建 UI）
-- **改为"允许执行 + UI 单例"策略** — 脚本可多次执行不报错，但通过唯一 ID `__cxdl_bar_unique_v211` 确保工具栏只创建一次
-- **重复运行感知** — 第二次及之后的执行会检测到 `_isDuplicateRun` 标记，跳过 buildBar() 但仍执行 doScan()
-- **保留全部兜底清理机制** — MutationObserver + 3秒定时器持续清除旧版残留
+### v2.1.2（当前）
+- **主动清除其他超星下载脚本的 UI** — 检测并移除 KCDL、旧版 CXDL 等所有非本脚本的工具栏
+  - Strategy A: 扫描所有 position:fixed + top:0 的 div，匹配文本关键词（`[KCDL]`、`Resource DL`、Scan/Select DL 等按钮文字）
+  - Strategy B: 按 ID 清除已知旧版（`#_cxdl_bar`, `#_cxdl_bar2`, `#_kcdl_bar`）
+  - Strategy C: 按类名清除（`.kcdl-bar`, `.kcdl-float`）
+- **延迟清理机制** — 启动后 1s、3s、6s 再次执行清理（应对晚加载的其他脚本）
+- **清理间隔缩短至 2 秒** — 更积极地清除重复 UI
 
-### v2.1.0
+### v2.1.1
 - **彻底重写防重复系统（5层防护）**：
   - Layer 0: **iframe 检测** — 跳过所有 iframe 中的执行（`window.self !== window.top`），这是导致脚本执行两次的主因
   - Layer 1: **全局标记** `__cxdl_v210` + 兼容旧版 `_cxdl_v209`/`_cxdl_v208`

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ChaoXing Course Downloader
 // @namespace    https://github.com/fwzm/ChaoXingDownload
-// @version      2.1.1
+// @version      2.1.2
 // @description  Download course resources from ChaoXing (mooc2-ans) - PPT/PDF/DOC/Video
 // @author       fwzm
 // @match        *://*.chaoxing.com/*
@@ -19,98 +19,108 @@
 (function() {
     'use strict';
 
-    // ====== ANTI-DUP: UI-singleton strategy (v2.1.1) ======
-    // Core philosophy: DON'T block script execution — allow multiple invocations.
-    // Instead, ensure UI elements are created ONLY ONCE via singleton pattern.
-    // This avoids the "false positive iframe detection" that killed v2.1.0.
+    // ====== ANTI-DUP: aggressive foreign-script cleanup (v2.1.2) ======
+    // Problem: User has OTHER ChaoXing download scripts installed (KCDL v3.x, old CXDL versions, etc.)
+    // They all create fixed-top toolbars that conflict with ours.
+    // Solution: Aggressively detect and remove ANY non-CXDL download toolbar.
     //
-    // Defense layers:
-    //   1. Global flag — logs duplicate runs but doesn't block
-    //   2. DOM marker  — on documentElement for cross-context awareness  
-    //   3. Singleton ID — buildBar() checks for __cxdl_bar_unique before creating
-    //   4. MutationObserver — kills any duplicate bars that somehow appear
-    //   5. Interval cleanup — every 3s removes stray remnants
+    // Strategy:
+    //   1. Allow multiple script invocations (don't block execution)
+    //   2. Singleton UI creation via unique ID
+    //   3. AGGRESSIVELY remove other scripts' UI elements
+    //   4. MutationObserver + interval cleanup as fallback
 
     var _isDuplicateRun = false;
 
-    // Layer 1: Global flag (informational, non-blocking)
-    if (unsafeWindow.__cxdl_v211) {
+    // Layer 1: Global flag
+    if (unsafeWindow.__cxdl_v212) {
         _isDuplicateRun = true;
-        console.log('[CXDL] v2.1.1 noticed re-run (will skip UI creation)', location.href);
+        console.log('[CXDL] v2.1.2 noticed re-run', location.href);
     }
+    unsafeWindow.__cxdl_v212 = true;
     unsafeWindow.__cxdl_v211 = true;
-    // Also claim older-version flags to block them
-    unsafeWindow._cxdl_v210 = true;
+    unsafeWindow.__cxdl_v210 = true;
     unsafeWindow._cxdl_v209 = true;
     unsafeWindow._cxdl_v208 = true;
 
     // Layer 2: DOM marker
-    try {
-        document.documentElement.setAttribute('data-cxdl-active', 'v2.1.1');
-    } catch(e) {}
+    try { document.documentElement.setAttribute('data-cxdl-active', 'v2.1.2'); } catch(e) {}
 
-    // Nuke function: clean up old-version UI remnants
-    function nukeOldUI() {
+    // ====== Nuke function: remove ALL non-CXDL download toolbars ======
+    // This is the KEY fix - we must detect and destroy other scripts' UI
+    function nukeForeignToolbars() {
         try {
-            // Remove old-version bars by their known IDs (not our unique ID)
-            document.querySelectorAll('#_cxdl_bar,#_cxdl_bar2').forEach(function(el){el.remove();});
-            // Remove old float buttons
-            document.querySelectorAll('.cxdl-float:not([id=__cxdl_float_unique_v211])').forEach(function(el){el.remove();});
-            // Remove old-style toolbars that look like CXDL but lack our class
-            var allFixed = document.querySelectorAll('div[style*="position:fixed"]');
-            for (var i = 0; i < allFixed.length; i++) {
-                var el = allFixed[i];
+            // Strategy A: Find ALL elements at position:fixed; top:0 (or near top)
+            // These are almost always download toolbars on chaoxing pages
+            var candidates = [];
+            // Check inline style
+            document.querySelectorAll('div').forEach(function(el) {
+                var style = el.getAttribute('style') || '';
+                var cls = el.className || '';
+                var computedTop = '';
+                try { computedTop = window.getComputedStyle(el).position; } catch(e) {}
+                // Match if: fixed position AND at/near top AND looks like a toolbar
+                if ((style.indexOf('position:fixed') >= 0 || computedTop === 'fixed')
+                    && (style.indexOf('top:0') >= 0 || style.indexOf('top:') === 0 || el.getBoundingClientRect().top < 50)) {
+                    candidates.push(el);
+                }
+                // Also match by class name patterns used by common chaoxing scripts
+                if (/kcdl-bar|kcdl-float|cxdl-bar|chaoxing.*toolbar|download.*bar/i.test(cls)) {
+                    candidates.push(el);
+                }
+            });
+
+            for (var i = 0; i < candidates.length; i++) {
+                var el = candidates[i];
+                var eid = el.id || '';
+                var ecls = el.className || '';
                 var txt = (el.textContent || '').trim();
-                if ((txt.indexOf('[CXDL]') >= 0 || txt.indexOf('Resource DL') >= 0 || txt.indexOf('[KCDL]') >= 0)
-                    && !el.className.match(/cxdl-bar/) && el.id !== '__cxdl_bar_unique_v211') {
-                    console.log('[CXDL] Nuking old-style toolbar remnant');
+
+                // NEVER remove OUR own toolbar
+                if (eid === '__cxdl_bar_unique_v212') continue;
+                if (eid === '__cxdl_float_unique_v212') continue;
+
+                // Check if this element looks like a foreign download toolbar
+                var isForeign = false;
+
+                // Has known foreign script markers in text
+                if (/\[KCDL\]|\[CXDL\].*Resource DL|^Resource DL/i.test(txt)) isForeign = true;
+                // Has KCDL class names
+                if (/kcdl-bar|kcdl-float|kcdl-btn/i.test(ecls)) isForeign = true;
+                // Is a fixed-top bar with download-related buttons/text
+                if (/Scan|Select DL|All DL|PPT|PDF|DOC.*DL|资源.*下载|课件.*下载/i.test(txt)
+                    && el.getBoundingClientRect().width > 200
+                    && el.getBoundingClientRect().height < 80) {
+                    // It looks like a download toolbar but isn't ours
+                    if (!/__cxdl_bar_unique/.test(eid)) isForeign = true;
+                }
+
+                if (isForeign) {
+                    console.log('[CXDL] Removing foreign toolbar:', (ecls||'').substring(0,30), '| text:', txt.substring(0,40));
                     el.remove();
                 }
             }
-        } catch(e){}
+
+            // Strategy B: Specific known IDs from older versions / other scripts
+            ['#_cxdl_bar', '#_cxdl_bar2', '#_kcdl_bar'].forEach(function(sel) {
+                try { document.querySelectorAll(sel).forEach(function(el){el.remove();}); } catch(e){}
+            });
+
+            // Strategy B2: Known class patterns from other scripts
+            ['.kcdl-bar', '.kcdl-float'].forEach(function(sel) {
+                try { document.querySelectorAll(sel).forEach(function(el){el.remove();}); } catch(e){}
+            });
+
+        } catch(e) {}
     }
 
-    // Initial cleanup of old versions
-    nukeOldUI();
+    // Initial aggressive cleanup
+    nukeForeignToolbars();
 
-    // Layer 3+4: MutationObserver — continuously kill duplicates
-    var _obs = null;
-    try { _obs = new MutationObserver(killDupes); } catch(e) {}
-    function killDupes() {
-        try {
-            var bars = document.querySelectorAll('.cxdl-bar');
-            if (bars.length > 1) {
-                // Keep only the one with our unique ID, or keep the last
-                var kept = null;
-                for (var bi = 0; bi < bars.length; bi++) {
-                    if (bars[bi].id === '__cxdl_bar_unique_v211') { kept = bars[bi]; break; }
-                }
-                if (!kept) kept = bars[bars.length - 1]; // fallback: keep last
-                for (var bj = 0; bj < bars.length; bj++) {
-                    if (bars[bj] !== kept) { console.log('[CXDL] Removing dup bar'); bars[bj].remove(); }
-                }
-            }
-            var floats = document.querySelectorAll('.cxdl-float');
-            if (floats.length > 1) {
-                var fkept = null;
-                for (var fi = 0; fi < floats.length; fi++) {
-                    if (floats[fi].id === '__cxdl_float_unique_v211') { fkept = floats[fi]; break; }
-                }
-                if (!fkept) fkept = floats[floats.length - 1];
-                for (var fj = 0; fj < floats.length; fj++) {
-                    if (floats[fj] !== fkept) floats[fj].remove();
-                }
-            }
-        } catch(e){}
-    }
-
-    // Layer 5: Periodic cleanup (every 3 seconds)
-    setInterval(function() {
-        killDupes();
-        nukeOldUI();
-    }, 3000);
-
-    console.log('[CXDL] v2.1.1 starting' + (_isDuplicateRun ? ' [duplicate run]' : ''), location.href);
+    // Also do a delayed cleanup after 1s (other scripts may load later)
+    setTimeout(nukeForeignToolbars, 1000);
+    setTimeout(nukeForeignToolbars, 3000);
+    setTimeout(nukeForeignToolbars, 6000);
 
     // ====== DOWNLOAD MODE (user choice) ======
     // 'gm' = GM_download (Tampermonkey native download - filename from headers, no blob URL needed)
@@ -629,7 +639,7 @@
     function buildBar(){
         // If this is a duplicate script invocation and bar already exists, skip entirely
         if (_isDuplicateRun) {
-            _barInstance = document.getElementById('__cxdl_bar_unique_v211');
+            _barInstance = document.getElementById('__cxdl_bar_unique_v212');
             if (_barInstance) {
                 console.log('[CXDL] Duplicate run: toolbar exists, skipping buildBar');
                 setTimeout(doScan, 500);
@@ -638,20 +648,21 @@
         }
 
         // Singleton: if our bar already exists from a previous run, just reuse it
-        _barInstance = document.getElementById('__cxdl_bar_unique_v211');
+        _barInstance = document.getElementById('__cxdl_bar_unique_v212');
         if (_barInstance) {
             console.log('[CXDL] Toolbar already exists, skipping buildBar');
             setTimeout(doScan, 500);
             return;
         }
 
-        // Clean up any remaining old toolbars
+        // Clean up any remaining old toolbars (including foreign scripts)
+        nukeForeignToolbars();
         try { document.querySelectorAll('.cxdl-bar').forEach(function(el){el.remove();}); } catch(e){}
 
         var bar=document.createElement('div');
-        bar.id='__cxdl_bar_unique_v211';  // unique ID that no other version will use
+        bar.id='__cxdl_bar_unique_v212';  // unique ID that no other version will use
         bar.className='cxdl-bar';
-        bar.setAttribute('data-cxdl-version', '2.1.1');
+        bar.setAttribute('data-cxdl-version', '2.1.2');
         bar.innerHTML='<span class="title">[CXDL]</span><span id="_cxdl_st2" class="status">Loading...</span>';
 
         function mkBtn(label,cls,hnd){
@@ -682,12 +693,12 @@
         _barInstance = bar;
 
         // Float button (singleton check by unique ID)
-        if(!document.getElementById('__cxdl_float_unique_v211')){
+        if(!document.getElementById('__cxdl_float_unique_v212')){
             var fb=document.createElement('button');
-            fb.id='__cxdl_float_unique_v211';
+            fb.id='__cxdl_float_unique_v212';
             fb.className='cxdl-float';fb.textContent='v2';fb.title='Toggle';
             fb.addEventListener('click',function(){
-                var b=document.getElementById('__cxdl_bar_unique_v211');
+                var b=document.getElementById('__cxdl_bar_unique_v212');
                 if(b)b.style.display=b.style.display==='none'?'block':'none';
                 else doScan();
             });
@@ -697,11 +708,46 @@
         setTimeout(doScan,2500);
     }
 
+    // ====== MutationObserver + Interval Cleanup ======
+    var _obs = null;
+    try { _obs = new MutationObserver(killDupes); } catch(e) {}
+    function killDupes() {
+        try {
+            nukeForeignToolbars(); // always clean foreign first
+            // Our own duplicates
+            var bars = document.querySelectorAll('.cxdl-bar');
+            if (bars.length > 1) {
+                var kept = null;
+                for (var bi = 0; bi < bars.length; bi++) {
+                    if (bars[bi].id === '__cxdl_bar_unique_v212') { kept = bars[bi]; break; }
+                }
+                if (!kept) kept = bars[bars.length - 1];
+                for (var bj = 0; bj < bars.length; bj++) {
+                    if (bars[bj] !== kept) bars[bj].remove();
+                }
+            }
+            var floats = document.querySelectorAll('.cxdl-float');
+            if (floats.length > 1) {
+                var fkept = null;
+                for (var fi = 0; fi < floats.length; fi++) {
+                    if (floats[fi].id === '__cxdl_float_unique_v212') { fkept = floats[fi]; break; }
+                }
+                if (!fkept) fkept = floats[floats.length - 1];
+                for (var fj = 0; fj < floats.length; fj++) {
+                    if (floats[fj] !== fkept) floats[fj].remove();
+                }
+            }
+        } catch(e){}
+    }
+
+    // Periodic cleanup every 2 seconds
+    setInterval(function() { killDupes(); nukeForeignToolbars(); }, 2000);
+
     function doScan(){
         killDupes();
         var ids=collectIds();unsafeWindow._cxdl_ids=ids.map(function(x){return x.id;});injectBtns();
         setStatus(ids.length?(ids.length+' resources | click buttons to DL'):'No IDs - go to Materials tab & click Scan');
-        console.log('[CXDL] v2.1.1 scan:',ids.length);
+        console.log('[CXDL] v2.1.2 scan:',ids.length);
     }
 
     // ====== ENTRY ======
@@ -709,5 +755,5 @@
         buildBar();
         try{_obs.observe(document.body,{childList:true,subtree:true});}catch(e){}
     }
-    console.log('[CXDL] v2.1.1 loaded | GM_download available:',_gmDownloadAvailable,'| mode:',_dlMode);
+    console.log('[CXDL] v2.1.2 loaded | GM_download available:',_gmDownloadAvailable,'| mode:',_dlMode);
 })();
