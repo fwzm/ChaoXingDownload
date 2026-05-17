@@ -78,15 +78,16 @@
 
 ## 版本更新记录
 
-### v2.1.2（当前）
-- **主动清除其他超星下载脚本的 UI** — 检测并移除 KCDL、旧版 CXDL 等所有非本脚本的工具栏
-  - Strategy A: 扫描所有 position:fixed + top:0 的 div，匹配文本关键词（`[KCDL]`、`Resource DL`、Scan/Select DL 等按钮文字）
-  - Strategy B: 按 ID 清除已知旧版（`#_cxdl_bar`, `#_cxdl_bar2`, `#_kcdl_bar`）
-  - Strategy C: 按类名清除（`.kcdl-bar`, `.kcdl-float`）
-- **延迟清理机制** — 启动后 1s、3s、6s 再次执行清理（应对晚加载的其他脚本）
-- **清理间隔缩短至 2 秒** — 更积极地清除重复 UI
+### v2.1.3（当前）
+- **彻底重写 nukeForeignToolbars() — 使用 getComputedStyle 而非内联 style 属性检测**
+  - **PASS 1**: 遍历所有 DOM 元素，用 `getComputedStyle(el).position === 'fixed'` + `getBoundingClientRect().top < 60` 定位顶部固定元素
+  - **文本匹配**: `[KCDL]`、`Resource DL`、`Scan.*DL`、`No IDs.*Materials`、背景色 `rgb(13,57,...)`/`#1565c0`（KCDL 蓝色）
+  - **PASS 2**: TreeWalker 文本搜索 — 直接查找包含 `[KCDL]` 或 `Resource DL` 的元素
+  - **PASS 3**: 选择器精确打击 — `#_cxdl_bar*`、`.kcdl-*`、`[id*=kcdl]`、`[class*=kcdl]`
+- **调试模式**: `_debugLog = true` 可开启详细元素扫描日志
+- **保留全部旧版功能**: HTTPS 强制升级、GM_download 模式切换、单例工具栏
 
-### v2.1.1
+### v2.1.2
 - **彻底重写防重复系统（5层防护）**：
   - Layer 0: **iframe 检测** — 跳过所有 iframe 中的执行（`window.self !== window.top`），这是导致脚本执行两次的主因
   - Layer 1: **全局标记** `__cxdl_v210` + 兼容旧版 `_cxdl_v209`/`_cxdl_v208`
