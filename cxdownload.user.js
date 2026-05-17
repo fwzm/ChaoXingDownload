@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ChaoXing Course Downloader
 // @namespace    https://github.com/fwzm/ChaoXingDownload
-// @version      2.1.4
+// @version      2.1.5
 // @description  Download course resources from ChaoXing (mooc2-ans) - PPT/PDF/DOC/Video
 // @author       fwzm
 // @match        *://*.chaoxing.com/*
@@ -29,11 +29,12 @@
     //   C. elementFromPoint: Physically detect what's visible at viewport top
 
     var _isDuplicateRun = false;
-    var OUR_BAR_ID = '__cxdl_bar_unique_v214';
-    var OUR_FLOAT_ID = '__cxdl_float_unique_v214';
+    var OUR_BAR_ID = '__cxdl_bar_unique_v215';
+    var OUR_FLOAT_ID = '__cxdl_float_unique_v215';
 
     // Layer 1: Global flag
     if (unsafeWindow.__cxdl_v214) { _isDuplicateRun = true; }
+    unsafeWindow.__cxdl_v215 = true;
     unsafeWindow.__cxdl_v214 = true;
     unsafeWindow.__cxdl_v213 = true; unsafeWindow.__cxdl_v212 = true; unsafeWindow.__cxdl_v211 = true;
     unsafeWindow.__cxdl_v210 = true; unsafeWindow._cxdl_v209 = true; unsafeWindow._cxdl_v208 = true;
@@ -213,7 +214,7 @@
     setTimeout(checkTopArea, 2000);
     setTimeout(checkTopArea, 6000);
 
-    console.log('[CXDL] v2.1.4 starting' + (_isDuplicateRun ? ' [dup]' : ''), location.href);
+    console.log('[CXDL] v2.1.5 starting' + (_isDuplicateRun ? ' [dup]' : ''), location.href, '| target:', isTargetPage());
 
     // ====== DOWNLOAD MODE (user choice) ======
     // 'gm' = GM_download (Tampermonkey native download - filename from headers, no blob URL needed)
@@ -772,6 +773,10 @@
         }
         _barInstance = bar;
 
+        // CRITICAL: Force our bar to be visible (override any nuke CSS or other scripts)
+        bar.style.cssText += ';display:flex!important;visibility:visible!important;position:fixed!important;top:0!important;left:0!important;z-index:2147483647!important;';
+        console.log('[CXDL] Bar created and forced visible:', bar.id, 'size:', bar.getBoundingClientRect().width + 'x' + bar.getBoundingClientRect().height);
+
         // Float button (singleton check by unique ID)
         if(!document.getElementById(OUR_FLOAT_ID)){
             var fb=document.createElement('button');
@@ -826,7 +831,7 @@
         killDupes();
         var ids=collectIds();unsafeWindow._cxdl_ids=ids.map(function(x){return x.id;});injectBtns();
         setStatus(ids.length?(ids.length+' resources | click buttons to DL'):'No IDs - go to Materials tab & click Scan');
-        console.log('[CXDL] v2.1.4 scan:',ids.length);
+        console.log('[CXDL] v2.1.5 scan:',ids.length);
     }
 
     // ====== ENTRY ======
@@ -834,5 +839,5 @@
         buildBar();
         try{_obs.observe(document.body,{childList:true,subtree:true});}catch(e){}
     }
-    console.log('[CXDL] v2.1.4 loaded | GM_download available:',_gmDownloadAvailable,'| mode:',_dlMode);
+    console.log('[CXDL] v2.1.5 loaded | GM_download available:',_gmDownloadAvailable,'| mode:',_dlMode);
 })();
