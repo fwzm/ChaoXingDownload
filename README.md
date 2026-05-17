@@ -78,12 +78,20 @@
 
 ## 版本更新记录
 
-### v2.0.9（当前）
-- **加强四重防重复机制** — 新增 `_cxdl_v209` 全局标记 + 兼容旧版 `_cxdl_v208` + `buildBar()` 中主动移除所有已存在的工具栏（而非跳过）+ MutationObserver 持续清理重复元素
-- **修复 SPA 导航导致工具栏叠加的问题** — 每次构建工具栏前先清除所有旧实例
-- **建议**：请先在 Tampermonkey 中删除旧的"超星学习通课程资源直链下载"脚本，只保留"ChaoXing Course Downloader"
+### v2.1.0（当前）
+- **彻底重写防重复系统（5层防护）**：
+  - Layer 0: **iframe 检测** — 跳过所有 iframe 中的执行（`window.self !== window.top`），这是导致脚本执行两次的主因
+  - Layer 1: **全局标记** `__cxdl_v210` + 兼容旧版 `_cxdl_v209`/`_cxdl_v208`
+  - Layer 2: **DOM 标记** — `document.documentElement.setAttribute('data-cxdl-active')`，跨上下文更可靠
+  - Layer 3: **MutationObserver** — 持续监控并移除重复的工具栏和悬浮按钮
+  - Layer 4: **定时清理** — 每 3 秒扫描一次，清除任何残留的旧版工具栏（包括不含 cxdl- 类名的老版本）
+- **buildBar 单例模式** — 使用唯一 ID `__cxdl_bar_unique_v210` 做存在性检查，已存在则直接返回不重建
+- **悬浮按钮单例化** — 同样使用唯一 ID 防重复创建
+- **修复 Mixed Content 警告** — 强制使用 HTTPS 协议构建 API URL 和下载链接
+- **悬浮按钮显示/隐藏 bug 修复** — 旧代码逻辑写反导致无法切换
+- **重要提示**：请确保 Tampermonkey 中只安装一个超星下载相关脚本
 
-### v2.0.8
+### v2.0.9
 - 新增 **GM_download 下载模式**（Tampermonkey 原生下载，文件名取自服务器 Content-Disposition 头）
 - 新增 **[GM]/[BRW] 切换按钮**，用户可在工具栏上自由切换下载方式
 - 下载模式偏好保存在 `localStorage`（`cxdl_dlMode`），刷新页面后保持选择
