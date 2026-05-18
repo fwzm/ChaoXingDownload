@@ -1,12 +1,15 @@
 // ==UserScript==
 // @name         ChaoXing Course Downloader
 // @namespace    https://github.com/fwzm/ChaoXingDownload
-// @version      2.1.7
+// @version      2.1.8
 // @description  Download course resources from ChaoXing (mooc2-ans) - PPT/PDF/DOC/Video
 // @author       fwzm
 // @match        *://*.chaoxing.com/*
 // @match        *://*.edu.cn/*
 // @match        *://*.xueyinonline.com/*
+// @updateURL    https://raw.githubusercontent.com/fwzm/ChaoXingDownload/master/cxdownload.user.js
+// @downloadURL  https://raw.githubusercontent.com/fwzm/ChaoXingDownload/master/cxdownload.user.js
+// @supportURL   https://github.com/fwzm/ChaoXingDownload/issues
 // @run-at       document-start
 // @grant        GM_addStyle
 // @grant        unsafeWindow

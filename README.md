@@ -23,7 +23,8 @@
 
 1. 安装 [Tampermonkey](https://www.tampermonkey.net/)（推荐）或 Violentmonkey / Greasemonkey
 2. 点击安装脚本：
-   - [GitHub 源](https://github.com/fwzm/ChaoXingDownload/raw/main/cxdownload.user.js)
+   - [GitHub 源](https://raw.githubusercontent.com/fwzm/ChaoXingDownload/master/cxdownload.user.js)
+3. 脚本已内置 `@updateURL` / `@downloadURL`，后续可在 Tampermonkey 中直接检查更新
 
 ## 使用方法
 
@@ -78,7 +79,11 @@
 
 ## 版本更新记录
 
-### v2.1.7（当前）
+### v2.1.8（当前）
+- **自动更新地址**：脚本头部新增 `@updateURL` / `@downloadURL`，用户无需手动填写 Tampermonkey 更新 URL
+- **安装链接修正**：README 安装地址改为当前仓库实际分支 `master`
+
+### v2.1.7
 - **iframe worker 模式**：脚本在 iframe 中只扫描并上报资源 ID，不再创建蓝色顶栏或右下角悬浮按钮，减少刷新时的重复 UI 闪烁
 - **悬浮面板**：右下角 **DL** 按钮现在会打开功能面板，可扫描、打开资源列表、下载 PDF、全部下载和切换下载模式
 - **统一资源缓存**：DOM、同源 iframe、`postMessage` 上报和 fetch/XHR 捕获的 objectid 会合并去重，顶栏和悬浮面板使用同一份资源列表
