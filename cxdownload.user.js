@@ -1,19 +1,28 @@
 // ==UserScript==
 // @name         ChaoXing Course Downloader
 // @namespace    https://github.com/fwzm/ChaoXingDownload
-// @version      2.1.6
+// @version      2.1.7
 // @description  Download course resources from ChaoXing (mooc2-ans) - PPT/PDF/DOC/Video
 // @author       fwzm
 // @match        *://*.chaoxing.com/*
 // @match        *://*.edu.cn/*
 // @match        *://*.xueyinonline.com/*
-// @run-at       document-idle
+// @run-at       document-start
 // @grant        GM_addStyle
 // @grant        unsafeWindow
 // @grant        GM_xmlhttpRequest
 // @grant        GM_download
 // @license      GPL-3.0
-// @connect      *
+// @connect      chaoxing.com
+// @connect      *.chaoxing.com
+// @connect      xueyinonline.com
+// @connect      *.xueyinonline.com
+// @connect      edu.cn
+// @connect      *.edu.cn
+// @connect      ananas.chaoxing.com
+// @connect      mooc1.chaoxing.com
+// @connect      mooc1-api.chaoxing.com
+// @connect      mooc2-ans.chaoxing.com
 // ==/UserScript==
 
 (function() {
@@ -29,11 +38,18 @@
     //   C. elementFromPoint: Physically detect what's visible at viewport top
 
     var _isDuplicateRun = false;
-    var OUR_BAR_ID = '__cxdl_bar_unique_v216';
-    var OUR_FLOAT_ID = '__cxdl_float_unique_v216';
+    var IS_TOP_WINDOW = true;
+    try { IS_TOP_WINDOW = window.self === window.top; } catch(e) { IS_TOP_WINDOW = false; }
+    var OUR_BAR_ID = '__cxdl_bar_unique_v217';
+    var OUR_FLOAT_ID = '__cxdl_float_unique_v217';
+    var CXDL_MSG_TYPE = 'CXDL_RESOURCE_IDS_V217';
+    var _frameKey = 'cxdl_' + Date.now() + '_' + Math.random().toString(16).slice(2);
+    var _apiIds = [];
+    var _frameIds = {};
 
     // Layer 1: Global flag
     if (unsafeWindow.__cxdl_v214) { _isDuplicateRun = true; }
+    unsafeWindow.__cxdl_v217 = true;
     unsafeWindow.__cxdl_v216 = true;
     unsafeWindow.__cxdl_v215 = true;
     unsafeWindow.__cxdl_v214 = true;
@@ -41,7 +57,7 @@
     unsafeWindow.__cxdl_v210 = true; unsafeWindow._cxdl_v209 = true; unsafeWindow._cxdl_v208 = true;
 
     // Layer 2: DOM marker
-    try { document.documentElement.setAttribute('data-cxdl-active', 'v2.1.4'); } catch(e) {}
+    try { document.documentElement.setAttribute('data-cxdl-active', 'v2.1.7'); } catch(e) {}
 
     // ====== STRATEGY A: CSS Nuclear Hiding ======
     // This hides ANY fixed/sticky element in the top 80px of the viewport,
@@ -50,6 +66,9 @@
     GM_addStyle([
         /* Hide ALL fixed/sticky bars at the top of the page */
         '[data-cxdl-nuke] { display: none !important; visibility: hidden !important; pointer-events: none !important; height: 0 !important; overflow: hidden !important; }',
+        '#_cxdl_bar,#_cxdl_bar2,#_cxdl_bar_v2,#_cxdl_tb,#__cxdl_bar_unique_v210,#__cxdl_bar_unique_v211,#__cxdl_bar_unique_v212,#__cxdl_bar_unique_v213,#__cxdl_bar_unique_v214,#__cxdl_bar_unique_v215,#__cxdl_bar_unique_v216{display:none!important;visibility:hidden!important;pointer-events:none!important;height:0!important;overflow:hidden!important}',
+        '#_cxdl_fb,#_cxdl_float,#__cxdl_float_unique_v210,#__cxdl_float_unique_v211,#__cxdl_float_unique_v212,#__cxdl_float_unique_v213,#__cxdl_float_unique_v214,#__cxdl_float_unique_v215,#__cxdl_float_unique_v216{display:none!important;visibility:hidden!important;pointer-events:none!important}',
+        '.kcdl-bar,.kcdl-float,.kcdl-panel,.kcdl-wrap,[id*="kcdl"],[class*="kcdl"]{display:none!important;visibility:hidden!important;pointer-events:none!important}',
         /* Our own bar - always visible */
         '#' + OUR_BAR_ID + ' { display: flex !important; visibility: visible !important; pointer-events: auto !important; height: auto !important; }',
         '#' + OUR_FLOAT_ID + ' { display: block !important; visibility: visible !important; pointer-events: auto !important; }'
@@ -57,6 +76,7 @@
 
     // ====== STRATEGY B: JS Multi-Method Removal ======
     function nukeForeignToolbars() {
+        if (!IS_TOP_WINDOW) return;
         var removed = 0;
         try {
             var ourId = OUR_BAR_ID;
@@ -131,7 +151,13 @@
             }
 
             // B3: Selector-based
-            ['#_cxdl_bar', '#_cxdl_bar2', '#_kcdl_bar',
+            ['#_cxdl_bar', '#_cxdl_bar2', '#_cxdl_tb', '#_cxdl_fb', '#_cxdl_float', '#_kcdl_bar',
+             '#__cxdl_bar_unique_v210', '#__cxdl_bar_unique_v211', '#__cxdl_bar_unique_v212',
+             '#__cxdl_bar_unique_v213', '#__cxdl_bar_unique_v214', '#__cxdl_bar_unique_v215',
+             '#__cxdl_bar_unique_v216',
+             '#__cxdl_float_unique_v210', '#__cxdl_float_unique_v211', '#__cxdl_float_unique_v212',
+             '#__cxdl_float_unique_v213', '#__cxdl_float_unique_v214', '#__cxdl_float_unique_v215',
+             '#__cxdl_float_unique_v216',
              '.kcdl-bar', '.kcdl-float', '.kcdl-panel', '.kcdl-wrap',
              '[id*="kcdl"]', '[class*="kcdl"]'].forEach(function(s) {
                 try {
@@ -181,6 +207,7 @@
 
     // ====== STRATEGY C: elementFromPoint — detect what's physically visible at top ======
     function checkTopArea() {
+        if (!IS_TOP_WINDOW) return;
         try {
             // Check points across the top area of the viewport
             for (var px = 10; px <= Math.min(window.innerWidth - 10, 800); px += 200) {
@@ -215,7 +242,7 @@
     setTimeout(checkTopArea, 2000);
     setTimeout(checkTopArea, 6000);
 
-    console.log('[CXDL] v2.1.6 starting' + (_isDuplicateRun ? ' [dup]' : ''), location.href, '| target:', isTargetPage());
+    console.log('[CXDL] v2.1.7 starting' + (_isDuplicateRun ? ' [dup]' : ''), location.href, '| target:', isTargetPage(), '| top:', IS_TOP_WINDOW);
 
     // ====== DOWNLOAD MODE (user choice) ======
     // 'gm' = GM_download (Tampermonkey native download - filename from headers, no blob URL needed)
@@ -240,6 +267,15 @@
         '.cxdl-btn.mode-btn.active{background:#ff9800;border-color:#ff9800;color:#fff}',
         '.cxdl-float{position:fixed;bottom:16px;right:16px;z-index:2147483646;width:38px;height:38px;border-radius:50%;background:#e65100;color:#fff;font-size:15px;border:none;cursor:pointer;box-shadow:0 3px 10px rgba(0,0,0,0.3);font-family:inherit}',
         '.cxdl-float:hover{background:#d84315}',
+        '.cxdl-panel{position:fixed;right:16px;bottom:62px;z-index:2147483647;width:260px;background:#fff;color:#222;border:1px solid #ddd;border-radius:8px;box-shadow:0 8px 28px rgba(0,0,0,0.22);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;padding:10px}',
+        '.cxdl-panel-hd{display:flex;align-items:center;justify-content:space-between;font-size:13px;font-weight:bold;margin-bottom:8px}',
+        '.cxdl-panel-close{border:none;background:transparent;color:#777;font-size:18px;line-height:1;cursor:pointer;padding:0 2px}',
+        '.cxdl-panel-status{font-size:12px;color:#555;margin-bottom:10px;line-height:1.5}',
+        '.cxdl-panel-actions{display:grid;grid-template-columns:1fr 1fr;gap:6px}',
+        '.cxdl-panel-actions button{border:none;border-radius:6px;background:#1976d2;color:#fff;font-size:12px;line-height:1.4;padding:6px 8px;cursor:pointer;font-family:inherit}',
+        '.cxdl-panel-actions button:hover{background:#1565c0}',
+        '.cxdl-panel-actions button.warn{background:#e65100}',
+        '.cxdl-panel-actions button.gray{background:#607d8b}',
         '.cxdl-toast{position:fixed;top:48px;right:14px;background:#fff;padding:9px 14px;border-radius:8px;font-size:12px;color:#222;border:1px solid #ddd;box-shadow:0 4px 20px rgba(0,0,0,0.12);max-width:420px;z-index:2147483647;font-family:inherit}',
         '.cxdl-modal-bg{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.45);z-index:2147483647;display:flex;justify-content:center;align-items:center;font-family:inherit}',
         '.cxdl-modal{background:#fff;border-radius:12px;padding:18px;max-width:640px;max-height:78vh;display:flex;flex-direction:column;min-width:360px;width:94%;box-shadow:0 10px 50px rgba(0,0,0,0.25)}',
@@ -260,6 +296,10 @@
     function cleanName(n) { return (n||'').replace(/[\/\\?%*:|"<>\x00-\x1f]/g,'_').trim().substring(0,120); }
     function delay(ms) { return new Promise(function(r){setTimeout(r,ms);}); }
     function isTargetPage() { return /\/mycourse\/stu|coursedata|studentstudy/.test(location.href); }
+    function withBody(cb) {
+        if (document.body) cb();
+        else document.addEventListener('DOMContentLoaded', function(){ if (document.body) cb(); }, { once:true });
+    }
 
     var _toastTmr = null;
     function toast(msg,dur,isErr,isOk){
@@ -289,13 +329,228 @@
     unsafeWindow._cxdl_ids=[];
     var _pageParams=getPageParams();
 
+    function isValidObjectId(id) {
+        return !!(id && /^[a-fA-F0-9]{8,}$/.test(String(id).trim()));
+    }
+
+    function inferType(name) {
+        var ext=(name||'').split('.').pop().toLowerCase();
+        if(/^pdf$/.test(ext))return 'PDF';
+        if(/^pptx?$/.test(ext))return 'PPT';
+        if(/^docx?$/.test(ext))return 'DOC';
+        if(/^xlsx?$/.test(ext))return 'XLS';
+        if(/^(mp4|flv|avi|wmv|mp3)$/.test(ext))return 'VIDEO';
+        if(/^(zip|rar|7z)$/.test(ext))return 'ARCHIVE';
+        return '?';
+    }
+
+    function addIdEntry(list, entry) {
+        if (!entry) return;
+        var id = String(entry.id || entry.objectid || entry.objectId || entry.oid || '').trim();
+        var m = id.match(/[a-fA-F0-9]{8,}/);
+        if (!m) return;
+        id = m[0];
+        if (!isValidObjectId(id)) return;
+        var name = entry.name || entry.filename || entry.fileName || entry.title || null;
+        if (name) name = cleanName(String(name));
+        for (var i=0;i<list.length;i++) {
+            if (list[i].id === id) {
+                if (!list[i].name && name) list[i].name = name;
+                return;
+            }
+        }
+        list.push({ id:id, name:name || null });
+    }
+
+    function mergeIds() {
+        var out = [];
+        for (var a=0;a<arguments.length;a++) {
+            var arr = arguments[a] || [];
+            for (var i=0;i<arr.length;i++) addIdEntry(out, arr[i]);
+        }
+        return out;
+    }
+
+    function postFrameIds(reason) {
+        if (IS_TOP_WINDOW) return;
+        try {
+            var ids = collectLocalIds(document);
+            window.top.postMessage({
+                type: CXDL_MSG_TYPE,
+                frameKey: _frameKey,
+                href: location.href,
+                reason: reason || 'scan',
+                ids: ids.map(function(x){ return { id:x.id, name:x.name || null }; })
+            }, '*');
+        } catch(e) {}
+    }
+
+    function installFrameListener() {
+        if (!IS_TOP_WINDOW) return;
+        window.addEventListener('message', function(ev) {
+            var data = ev && ev.data;
+            if (!data || data.type !== CXDL_MSG_TYPE || !data.frameKey) return;
+            var cleaned = [];
+            (data.ids || []).forEach(function(x){ addIdEntry(cleaned, x); });
+            _frameIds[data.frameKey] = cleaned;
+            if (cleaned.length) {
+                var total = collectIds().length;
+                setStatus(total + ' resources | frame cache updated');
+                console.log('[CXDL] frame ids:', cleaned.length, data.href || '');
+            }
+        });
+    }
+
+    function addApiIds(entries, source) {
+        var before = _apiIds.length;
+        (entries || []).forEach(function(x){ addIdEntry(_apiIds, x); });
+        if (_apiIds.length > before) {
+            console.log('[CXDL] API cache +', (_apiIds.length - before), source || '');
+            if (IS_TOP_WINDOW) {
+                var total = collectIds().length;
+                setStatus(total + ' resources | API cache updated');
+            } else {
+                postFrameIds('api-cache');
+            }
+        }
+    }
+
+    function pickName(obj, fallback) {
+        if (!obj || typeof obj !== 'object') return fallback || null;
+        var keys = ['filename','fileName','name','title','attname','attName','showName','displayName','resourceName','objectName','documentName'];
+        for (var i=0;i<keys.length;i++) {
+            var v = obj[keys[i]];
+            if (typeof v === 'string' && v.length > 0) return v;
+        }
+        return fallback || null;
+    }
+
+    function pickObjectId(obj) {
+        if (!obj || typeof obj !== 'object') return null;
+        var keys = ['objectid','objectId','object_id','objectIdStr','objectIdString','oid','fileId'];
+        for (var i=0;i<keys.length;i++) {
+            var v = obj[keys[i]];
+            if (isValidObjectId(v)) return String(v);
+        }
+        return null;
+    }
+
+    function extractIdsFromString(str, out, hintName) {
+        if (!str || typeof str !== 'string') return;
+        var name = hintName;
+        if (!name) {
+            var nm = str.match(/([^\/"'<>?&=]+\.(pptx?|docx?|xlsx?|pdf|mp4|flv|avi|wmv|mp3|zip|rar|7z))\b/i);
+            if (nm) name = nm[1];
+        }
+        var patterns = [
+            /(?:objectid|objectId|object_id|oid)["'=:\s%]+([a-fA-F0-9]{8,})/g,
+            /\/ananas\/(?:status|retreive|retrieve|portal\/fullscreen)\/([a-fA-F0-9]{8,})/g,
+            /[?&](?:objectid|objectId|object_id|oid)=([a-fA-F0-9]{8,})/g
+        ];
+        patterns.forEach(function(re) {
+            var m;
+            while ((m = re.exec(str))) addIdEntry(out, { id:m[1], name:name });
+        });
+    }
+
+    function extractIdsFromJson(root) {
+        var found = [];
+        var stack = [{ value:root, name:null }];
+        var seen = 0;
+        while (stack.length && seen < 6000) {
+            seen++;
+            var item = stack.pop();
+            var val = item.value;
+            if (typeof val === 'string') {
+                extractIdsFromString(val, found, item.name);
+                continue;
+            }
+            if (!val || typeof val !== 'object') continue;
+            var name = pickName(val, item.name);
+            var oid = pickObjectId(val);
+            if (oid) addIdEntry(found, { id:oid, name:name });
+            if (Array.isArray(val)) {
+                for (var ai=0;ai<val.length;ai++) stack.push({ value:val[ai], name:name });
+            } else {
+                Object.keys(val).forEach(function(k) {
+                    stack.push({ value:val[k], name:name });
+                });
+            }
+        }
+        return found;
+    }
+
+    function harvestApiText(text, source) {
+        if (!text || typeof text !== 'string') return;
+        if (!/(objectid|objectId|object_id|oid|ananas\/(?:status|retreive|retrieve|portal\/fullscreen))/i.test(text)) return;
+        var found = [];
+        try {
+            var json = JSON.parse(text);
+            found = extractIdsFromJson(json);
+        } catch(e) {
+            extractIdsFromString(text, found, null);
+        }
+        if (found.length) addApiIds(found, source);
+    }
+
+    function installApiInterceptors() {
+        try {
+            if (unsafeWindow.__cxdl_api_hook_v217) return;
+            unsafeWindow.__cxdl_api_hook_v217 = true;
+
+            var nativeFetch = unsafeWindow.fetch;
+            if (typeof nativeFetch === 'function') {
+                unsafeWindow.fetch = function() {
+                    var args = arguments;
+                    var reqUrl = '';
+                    try { reqUrl = typeof args[0] === 'string' ? args[0] : (args[0] && args[0].url) || ''; } catch(e) {}
+                    var p = nativeFetch.apply(this, args);
+                    try {
+                        p.then(function(resp) {
+                            try {
+                                var src = (resp && resp.url) || reqUrl || '';
+                                if (!/chaoxing|xueyinonline|ananas|coursedata|resource|file/i.test(src)) return;
+                                resp.clone().text().then(function(txt){ harvestApiText(txt, src); }).catch(function(){});
+                            } catch(e2) {}
+                        }).catch(function(){});
+                    } catch(e3) {}
+                    return p;
+                };
+            }
+
+            var NativeXHR = unsafeWindow.XMLHttpRequest;
+            if (typeof NativeXHR === 'function') {
+                unsafeWindow.XMLHttpRequest = function() {
+                    var xhr = new NativeXHR();
+                    var reqUrl = '';
+                    var open = xhr.open;
+                    xhr.open = function(method, url) {
+                        reqUrl = String(url || '');
+                        return open.apply(xhr, arguments);
+                    };
+                    try {
+                        xhr.addEventListener('load', function() {
+                            try {
+                                if (!/chaoxing|xueyinonline|ananas|coursedata|resource|file/i.test(reqUrl)) return;
+                                if (typeof xhr.responseText === 'string') harvestApiText(xhr.responseText, reqUrl);
+                            } catch(e4) {}
+                        });
+                    } catch(e5) {}
+                    return xhr;
+                };
+            }
+        } catch(err) {
+            console.warn('[CXDL] API hook failed:', err);
+        }
+    }
+
     // ====== Get filename near a container element ======
     function guessFilename(container){
         var el=container;
         for(var up=0;up<5;up++){
             if(!el)break;
             var txt=(el.textContent||'').trim();
-            var m=txt.match(/(.+?)\.(pptx?|docx?|xlsx?|pdf|mp4|avi|wmv)\b/i);
+            var m=txt.match(/(.+?)\.(pptx?|docx?|xlsx?|pdf|mp4|flv|avi|wmv|mp3|zip|rar|7z)\b/i);
             if(m&&m[1].length<120)return m[0];
             el=el.parentElement;
         }
@@ -304,7 +559,7 @@
             var sib=parent.previousElementSibling;
             if(sib){
                 var stxt=(sib.textContent||'').trim();
-                var sm=stxt.match(/(.+?)\.(pptx?|docx?|xlsx?|pdf|mp4)/i);
+                var sm=stxt.match(/(.+?)\.(pptx?|docx?|xlsx?|pdf|mp4|flv|avi|wmv|mp3|zip|rar|7z)/i);
                 if(sm)return sm[0];
             }
         }
@@ -436,9 +691,10 @@
     }
 
     // ====== collectIds ======
-    function collectIds(){
+    function collectLocalIds(doc){
+        doc = doc || document;
         var ids=[];
-        document.querySelectorAll('.ans-attach-ct,.ans-cc').forEach(function(c){
+        doc.querySelectorAll('.ans-attach-ct,.ans-cc').forEach(function(c){
             c.querySelectorAll('iframe').forEach(function(f){
                 var o=f.getAttribute('objectid');
                 if(o&&o.length>=8){
@@ -447,44 +703,55 @@
                 }
             });
         });
-        document.querySelectorAll('[objectid]').forEach(function(el){
+        doc.querySelectorAll('[objectid]').forEach(function(el){
             var o=el.getAttribute('objectid');
             if(o&&o.length>=8){
-                var existing=false;
-                for(var i=0;i<ids.length;i++){if(ids[i].id===o){existing=true;break;}}
-                if(!existing){
-                    var fn=guessFilename(el)||null;
-                    ids.push({id:o,name:fn,container:el,iframe:el});
-                }
+                addIdEntry(ids, {id:o, name:guessFilename(el)||null});
             }
         });
-        document.querySelectorAll('[data-objectid]').forEach(function(el){
+        doc.querySelectorAll('[data-objectid]').forEach(function(el){
             var o=el.getAttribute('data-objectid');
-            if(o&&o.length>=8){
-                var ex=false;
-                for(var i=0;i<ids.length;i++){if(ids[i].id===o){ex=true;break;}}
-                if(!ex)ids.push({id:o,name:guessFilename(el)});
-            }
+            if(o&&o.length>=8) addIdEntry(ids, {id:o, name:guessFilename(el)});
         });
-        document.querySelectorAll('[onclick]').forEach(function(el){
+        doc.querySelectorAll('[onclick]').forEach(function(el){
             var oc=el.getAttribute('onclick')||'';
             var m=oc.match(/objectid['"]?\s*[:=]\s*["']?([a-fA-F0-9]{10,})/i);
             if(m){
-                var oid=m[1],ex=false;
-                for(var i=0;i<ids.length;i++){if(ids[i].id===oid){ex=true;break;}}
-                if(!ex)ids.push({id:oid,name:guessFilename(el)});
+                addIdEntry(ids, {id:m[1], name:guessFilename(el)});
             }
         });
-        document.querySelectorAll('a[href]').forEach(function(el){
+        doc.querySelectorAll('a[href]').forEach(function(el){
             var h=el.getAttribute('href')||'';
             var m=h.match(/objectid['"]?\s*[:=/]\s*["']?([a-fA-F0-9]{10,})/i)||h.match(/\/ananas\/status\/([a-fA-F0-9]{10,})/i);
             if(m){
-                var mid=m[m.length>2?2:1],ex=false;
-                for(var i=0;i<ids.length;i++){if(ids[i].id===mid){ex=true;break;}}
-                if(!ex)ids.push({id:mid,name:(el.textContent||'').trim().substring(0,100)||null});
+                var mid=m[m.length>2?2:1];
+                addIdEntry(ids, {id:mid, name:(el.textContent||'').trim().substring(0,100)||null});
             }
         });
         return ids;
+    }
+
+    function collectSameOriginFrameIds(){
+        var ids = [];
+        if (!IS_TOP_WINDOW) return ids;
+        try {
+            document.querySelectorAll('iframe').forEach(function(fr) {
+                try {
+                    var doc = fr.contentDocument || (fr.contentWindow && fr.contentWindow.document);
+                    if (!doc) return;
+                    collectLocalIds(doc).forEach(function(x){ addIdEntry(ids, x); });
+                } catch(e) {}
+            });
+        } catch(e2) {}
+        return ids;
+    }
+
+    function collectIds(){
+        var frameCache = [];
+        Object.keys(_frameIds).forEach(function(k) {
+            (_frameIds[k] || []).forEach(function(x){ addIdEntry(frameCache, x); });
+        });
+        return mergeIds(collectLocalIds(document), collectSameOriginFrameIds(), _apiIds, frameCache);
     }
 
     // ====== UNIFIED DOWNLOAD: respects user's mode choice ======
@@ -667,6 +934,79 @@
         if(all.length===0){toast('Cannot get links. Try later.',4000,true);return;}batchDl(all);
     }
 
+    function scanPageCaches(){
+        var found = [];
+        try {
+            document.querySelectorAll('script').forEach(function(s) {
+                harvestApiText(s.textContent || '', 'inline-script');
+            });
+        } catch(e) {}
+        try {
+            for (var i=0;i<localStorage.length;i++) {
+                var k = localStorage.key(i);
+                if (!k || !/chaoxing|resource|course|file|attach|cxdl/i.test(k)) continue;
+                harvestApiText(localStorage.getItem(k) || '', 'localStorage:' + k);
+            }
+        } catch(e2) {}
+        found = collectIds();
+        setStatus(found.length ? (found.length + ' resources | cache scanned') : 'No IDs - switch to Materials tab');
+        return found;
+    }
+
+    function updatePanelStatus(panel) {
+        if (!panel) return;
+        var ids = collectIds();
+        var localCount = collectLocalIds(document).length;
+        var apiCount = _apiIds.length;
+        var frameCount = 0;
+        Object.keys(_frameIds).forEach(function(k){ frameCount += (_frameIds[k] || []).length; });
+        var st = panel.querySelector('.cxdl-panel-status');
+        if (st) st.innerHTML = '<b>' + ids.length + '</b> resources<br>DOM ' + localCount + ' / API ' + apiCount + ' / iframe ' + frameCount;
+    }
+
+    function closeFloatPanel() {
+        var old = document.getElementById('__cxdl_panel_v217');
+        if (old) old.remove();
+    }
+
+    function toggleFloatPanel() {
+        var old = document.getElementById('__cxdl_panel_v217');
+        if (old) { old.remove(); return; }
+        var panel = document.createElement('div');
+        panel.id = '__cxdl_panel_v217';
+        panel.className = 'cxdl-panel';
+        panel.innerHTML = '<div class="cxdl-panel-hd"><span>ChaoXing Download</span><button class="cxdl-panel-close" type="button">x</button></div>'
+            + '<div class="cxdl-panel-status">Scanning...</div>'
+            + '<div class="cxdl-panel-actions"></div>';
+        panel.querySelector('.cxdl-panel-close').onclick = closeFloatPanel;
+        var acts = panel.querySelector('.cxdl-panel-actions');
+        function pbtn(text, cls, handler) {
+            var b = document.createElement('button');
+            b.type = 'button';
+            b.textContent = text;
+            if (cls) b.className = cls;
+            b.onclick = function(ev) {
+                ev.preventDefault();
+                ev.stopPropagation();
+                handler();
+                setTimeout(function(){ updatePanelStatus(panel); }, 80);
+            };
+            acts.appendChild(b);
+        }
+        pbtn('Scan', 'gray', doScan);
+        pbtn('Resources', '', function(){ showModal(null); });
+        pbtn('PDF', '', function(){ showModal('PDF'); });
+        pbtn('All DL', 'warn', dlAll);
+        pbtn('API Cache', 'gray', function(){
+            scanPageCaches();
+            toast('Cache scan done', 2200, false, true);
+        });
+        pbtn(_dlMode === 'gm' ? 'Mode GM' : 'Mode BRW', 'gray', toggleDlMode);
+        document.body.appendChild(panel);
+        scanPageCaches();
+        updatePanelStatus(panel);
+    }
+
     // ====== INLINE BUTTONS ======
     function injectBtns(){
         var containers=document.querySelectorAll('.ans-attach-ct,.ans-cc');
@@ -732,6 +1072,13 @@
     // ====== BUILD TOOLBAR (singleton) ======
     var _barInstance = null;  // track our single toolbar instance
     function buildBar(){
+        try {
+            if (unsafeWindow.__cxdl_ui_lock_v217) {
+                setTimeout(doScan, 600);
+                return;
+            }
+            unsafeWindow.__cxdl_ui_lock_v217 = true;
+        } catch(e) {}
         if (_isDuplicateRun) {
             _barInstance = document.getElementById(OUR_BAR_ID);
             if (_barInstance) { setTimeout(doScan, 500); return; }
@@ -741,12 +1088,12 @@
 
         // Clean up any remaining old toolbars (including foreign scripts)
         nukeForeignToolbars();
-        try { document.querySelectorAll('.cxdl-bar').forEach(function(el){el.remove();}); } catch(e){}
+        try { document.querySelectorAll('.cxdl-bar:not(#' + OUR_BAR_ID + '),#_cxdl_bar_v2,#_cxdl_bar,#_cxdl_bar2').forEach(function(el){el.remove();}); } catch(e){}
 
         var bar=document.createElement('div');
         bar.id=OUR_BAR_ID;
         bar.className='cxdl-bar';
-        bar.setAttribute('data-cxdl-version', '2.1.4');
+        bar.setAttribute('data-cxdl-version', '2.1.7');
         bar.innerHTML='<span class="title">[CXDL]</span><span id="_cxdl_st2" class="status">Loading...</span>';
 
         function mkBtn(label,cls,hnd){
@@ -766,12 +1113,10 @@
         _modeBtnEl.addEventListener('click',toggleDlMode);
         bar.appendChild(_modeBtnEl);
 
-        if(document.body){
+        withBody(function(){
             if(document.body.firstChild)document.body.insertBefore(bar,document.body.firstChild);
             else document.body.appendChild(bar);
-        }else{
-            document.addEventListener('DOMContentLoaded',function(){document.body.appendChild(bar);});
-        }
+        });
         _barInstance = bar;
 
         // CRITICAL: Force our bar to be visible (override any nuke CSS or other scripts)
@@ -808,17 +1153,17 @@
         setInterval(guardBarHTML, 3000);
 
         // Float button (singleton check by unique ID)
-        if(!document.getElementById(OUR_FLOAT_ID)){
-            var fb=document.createElement('button');
-            fb.id=OUR_FLOAT_ID;
-            fb.className='cxdl-float';fb.textContent='v2';fb.title='Toggle';
-            fb.addEventListener('click',function(){
-                var b=document.getElementById(OUR_BAR_ID);
-                if(b)b.style.display=b.style.display==='none'?'block':'none';
-                else doScan();
-            });
-            document.body.appendChild(fb);
-        }
+        withBody(function(){
+            if(!document.getElementById(OUR_FLOAT_ID)){
+                var fb=document.createElement('button');
+                fb.id=OUR_FLOAT_ID;
+                fb.className='cxdl-float';fb.textContent='DL';fb.title='Open ChaoXing download panel';
+                fb.addEventListener('click',function(){
+                    toggleFloatPanel();
+                });
+                document.body.appendChild(fb);
+            }
+        });
         setStatus('Waiting...');
         setTimeout(doScan,2500);
     }
@@ -829,6 +1174,12 @@
     function killDupes() {
         try {
             nukeForeignToolbars(); // always clean foreign first
+            document.querySelectorAll('#__cxdl_bar_unique_v210,#__cxdl_bar_unique_v211,#__cxdl_bar_unique_v212,#__cxdl_bar_unique_v213,#__cxdl_bar_unique_v214,#__cxdl_bar_unique_v215,#__cxdl_bar_unique_v216,#_cxdl_bar_v2,#_cxdl_bar,#_cxdl_bar2').forEach(function(el){
+                if (el.id !== OUR_BAR_ID) el.remove();
+            });
+            document.querySelectorAll('#__cxdl_float_unique_v210,#__cxdl_float_unique_v211,#__cxdl_float_unique_v212,#__cxdl_float_unique_v213,#__cxdl_float_unique_v214,#__cxdl_float_unique_v215,#__cxdl_float_unique_v216,#_cxdl_fb,#_cxdl_float').forEach(function(el){
+                if (el.id !== OUR_FLOAT_ID) el.remove();
+            });
             var bars = document.querySelectorAll('.cxdl-bar');
             if (bars.length > 1) {
                 var kept = null;
@@ -861,13 +1212,30 @@
         killDupes();
         var ids=collectIds();unsafeWindow._cxdl_ids=ids.map(function(x){return x.id;});injectBtns();
         setStatus(ids.length?(ids.length+' resources | click buttons to DL'):'No IDs - go to Materials tab & click Scan');
-        console.log('[CXDL] v2.1.6 scan:',ids.length);
+        console.log('[CXDL] v2.1.7 scan:',ids.length);
     }
 
     // ====== ENTRY ======
+    installApiInterceptors();
+    installFrameListener();
+    if (!IS_TOP_WINDOW) {
+        if (isTargetPage()) {
+            setTimeout(function(){ postFrameIds('frame-start'); }, 300);
+            setTimeout(function(){ postFrameIds('frame-delay'); }, 1500);
+            try {
+                var frameObs = new MutationObserver(function(){ postFrameIds('frame-dom'); });
+                if (document.body) frameObs.observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['objectid','data-objectid']});
+                else document.addEventListener('DOMContentLoaded',function(){ frameObs.observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['objectid','data-objectid']}); });
+            } catch(e) {}
+        }
+        console.log('[CXDL] v2.1.7 iframe worker loaded', location.href);
+        return;
+    }
     if(isTargetPage()){
         buildBar();
-        try{_obs.observe(document.body,{childList:true,subtree:true});}catch(e){}
+        withBody(function(){
+            try{_obs.observe(document.body,{childList:true,subtree:true});}catch(e){}
+        });
     }
-    console.log('[CXDL] v2.1.6 loaded | GM_download available:',_gmDownloadAvailable,'| mode:',_dlMode);
+    console.log('[CXDL] v2.1.7 loaded | GM_download available:',_gmDownloadAvailable,'| mode:',_dlMode);
 })();
