@@ -1,8 +1,10 @@
 // ==UserScript==
-// @name         ChaoXing Course Downloader
+// @name         学习通课程资源下载器
+// @name:en      ChaoXing Course Downloader
 // @namespace    https://github.com/fwzm/ChaoXingDownload
-// @version      2.1.8
-// @description  Download course resources from ChaoXing (mooc2-ans) - PPT/PDF/DOC/Video
+// @version      2.1.9
+// @description  下载学习通课程资源文件，支持 PPT/PDF/DOC/视频等资料
+// @description:en Download course resources from ChaoXing (mooc2-ans) - PPT/PDF/DOC/Video
 // @author       fwzm
 // @match        *://*.chaoxing.com/*
 // @match        *://*.edu.cn/*
@@ -43,15 +45,17 @@
     var _isDuplicateRun = false;
     var IS_TOP_WINDOW = true;
     try { IS_TOP_WINDOW = window.self === window.top; } catch(e) { IS_TOP_WINDOW = false; }
-    var OUR_BAR_ID = '__cxdl_bar_unique_v217';
-    var OUR_FLOAT_ID = '__cxdl_float_unique_v217';
-    var CXDL_MSG_TYPE = 'CXDL_RESOURCE_IDS_V217';
+    var OUR_BAR_ID = '__cxdl_bar_unique_v219';
+    var OUR_FLOAT_ID = '__cxdl_float_unique_v219';
+    var CXDL_MSG_TYPE = 'CXDL_RESOURCE_IDS_V219';
     var _frameKey = 'cxdl_' + Date.now() + '_' + Math.random().toString(16).slice(2);
     var _apiIds = [];
     var _frameIds = {};
 
     // Layer 1: Global flag
     if (unsafeWindow.__cxdl_v214) { _isDuplicateRun = true; }
+    unsafeWindow.__cxdl_v219 = true;
+    unsafeWindow.__cxdl_v218 = true;
     unsafeWindow.__cxdl_v217 = true;
     unsafeWindow.__cxdl_v216 = true;
     unsafeWindow.__cxdl_v215 = true;
@@ -60,7 +64,7 @@
     unsafeWindow.__cxdl_v210 = true; unsafeWindow._cxdl_v209 = true; unsafeWindow._cxdl_v208 = true;
 
     // Layer 2: DOM marker
-    try { document.documentElement.setAttribute('data-cxdl-active', 'v2.1.7'); } catch(e) {}
+    try { document.documentElement.setAttribute('data-cxdl-active', 'v2.1.9'); } catch(e) {}
 
     // ====== STRATEGY A: CSS Nuclear Hiding ======
     // This hides ANY fixed/sticky element in the top 80px of the viewport,
@@ -69,8 +73,8 @@
     GM_addStyle([
         /* Hide ALL fixed/sticky bars at the top of the page */
         '[data-cxdl-nuke] { display: none !important; visibility: hidden !important; pointer-events: none !important; height: 0 !important; overflow: hidden !important; }',
-        '#_cxdl_bar,#_cxdl_bar2,#_cxdl_bar_v2,#_cxdl_tb,#__cxdl_bar_unique_v210,#__cxdl_bar_unique_v211,#__cxdl_bar_unique_v212,#__cxdl_bar_unique_v213,#__cxdl_bar_unique_v214,#__cxdl_bar_unique_v215,#__cxdl_bar_unique_v216{display:none!important;visibility:hidden!important;pointer-events:none!important;height:0!important;overflow:hidden!important}',
-        '#_cxdl_fb,#_cxdl_float,#__cxdl_float_unique_v210,#__cxdl_float_unique_v211,#__cxdl_float_unique_v212,#__cxdl_float_unique_v213,#__cxdl_float_unique_v214,#__cxdl_float_unique_v215,#__cxdl_float_unique_v216{display:none!important;visibility:hidden!important;pointer-events:none!important}',
+        '#_cxdl_bar,#_cxdl_bar2,#_cxdl_bar_v2,#_cxdl_tb,#__cxdl_bar_unique_v210,#__cxdl_bar_unique_v211,#__cxdl_bar_unique_v212,#__cxdl_bar_unique_v213,#__cxdl_bar_unique_v214,#__cxdl_bar_unique_v215,#__cxdl_bar_unique_v216,#__cxdl_bar_unique_v217,#__cxdl_bar_unique_v218{display:none!important;visibility:hidden!important;pointer-events:none!important;height:0!important;overflow:hidden!important}',
+        '#_cxdl_fb,#_cxdl_float,#__cxdl_float_unique_v210,#__cxdl_float_unique_v211,#__cxdl_float_unique_v212,#__cxdl_float_unique_v213,#__cxdl_float_unique_v214,#__cxdl_float_unique_v215,#__cxdl_float_unique_v216,#__cxdl_float_unique_v217,#__cxdl_float_unique_v218{display:none!important;visibility:hidden!important;pointer-events:none!important}',
         '.kcdl-bar,.kcdl-float,.kcdl-panel,.kcdl-wrap,[id*="kcdl"],[class*="kcdl"]{display:none!important;visibility:hidden!important;pointer-events:none!important}',
         /* Our own bar - always visible */
         '#' + OUR_BAR_ID + ' { display: flex !important; visibility: visible !important; pointer-events: auto !important; height: auto !important; }',
@@ -157,10 +161,10 @@
             ['#_cxdl_bar', '#_cxdl_bar2', '#_cxdl_tb', '#_cxdl_fb', '#_cxdl_float', '#_kcdl_bar',
              '#__cxdl_bar_unique_v210', '#__cxdl_bar_unique_v211', '#__cxdl_bar_unique_v212',
              '#__cxdl_bar_unique_v213', '#__cxdl_bar_unique_v214', '#__cxdl_bar_unique_v215',
-             '#__cxdl_bar_unique_v216',
+             '#__cxdl_bar_unique_v216', '#__cxdl_bar_unique_v217', '#__cxdl_bar_unique_v218',
              '#__cxdl_float_unique_v210', '#__cxdl_float_unique_v211', '#__cxdl_float_unique_v212',
              '#__cxdl_float_unique_v213', '#__cxdl_float_unique_v214', '#__cxdl_float_unique_v215',
-             '#__cxdl_float_unique_v216',
+             '#__cxdl_float_unique_v216', '#__cxdl_float_unique_v217', '#__cxdl_float_unique_v218',
              '.kcdl-bar', '.kcdl-float', '.kcdl-panel', '.kcdl-wrap',
              '[id*="kcdl"]', '[class*="kcdl"]'].forEach(function(s) {
                 try {
@@ -245,7 +249,7 @@
     setTimeout(checkTopArea, 2000);
     setTimeout(checkTopArea, 6000);
 
-    console.log('[CXDL] v2.1.7 starting' + (_isDuplicateRun ? ' [dup]' : ''), location.href, '| target:', isTargetPage(), '| top:', IS_TOP_WINDOW);
+    console.log('[CXDL] v2.1.9 starting' + (_isDuplicateRun ? ' [dup]' : ''), location.href, '| target:', isTargetPage(), '| top:', IS_TOP_WINDOW);
 
     // ====== DOWNLOAD MODE (user choice) ======
     // 'gm' = GM_download (Tampermonkey native download - filename from headers, no blob URL needed)
@@ -309,7 +313,7 @@
         var el = document.querySelector('.cxdl-toast');
         if(!el){el=document.createElement('div');el.className='cxdl-toast';document.body.appendChild(el);}
         clearTimeout(_toastTmr);
-        el.innerHTML=(isOk?'[OK] ':(isErr?'[ERR] ':''))+msg;
+        el.innerHTML=(isOk?'完成：':(isErr?'错误：':''))+msg;
         el.style.opacity=1;
         if(dur>0)_toastTmr=setTimeout(function(){el.style.opacity=0;},dur);
     }
@@ -398,7 +402,7 @@
             _frameIds[data.frameKey] = cleaned;
             if (cleaned.length) {
                 var total = collectIds().length;
-                setStatus(total + ' resources | frame cache updated');
+                setStatus(total + ' 个资源 | 已合并框架资源');
                 console.log('[CXDL] frame ids:', cleaned.length, data.href || '');
             }
         });
@@ -411,7 +415,7 @@
             console.log('[CXDL] API cache +', (_apiIds.length - before), source || '');
             if (IS_TOP_WINDOW) {
                 var total = collectIds().length;
-                setStatus(total + ' resources | API cache updated');
+                setStatus(total + ' 个资源 | 接口缓存已更新');
             } else {
                 postFrameIds('api-cache');
             }
@@ -498,8 +502,8 @@
 
     function installApiInterceptors() {
         try {
-            if (unsafeWindow.__cxdl_api_hook_v217) return;
-            unsafeWindow.__cxdl_api_hook_v217 = true;
+            if (unsafeWindow.__cxdl_api_hook_v219) return;
+            unsafeWindow.__cxdl_api_hook_v219 = true;
 
             var nativeFetch = unsafeWindow.fetch;
             if (typeof nativeFetch === 'function') {
@@ -621,7 +625,7 @@
         var proto='https:';
         // Only use http: if the page is genuinely NOT secure
         try { if (location.protocol && location.protocol !== 'https:') proto=location.protocol; } catch(e){}
-        var r={oid:objectid,fname:hintName||('r_'+objectid),url:null,type:'?'};
+        var r={oid:objectid,fname:hintName||('资源_'+objectid),url:null,type:'?'};
 
         var ext=(r.fname.split('.').pop()||'').toLowerCase();
         if(/^pdf$/.test(ext))r.type='PDF';
@@ -764,7 +768,7 @@
     var _gmDownloadAvailable = typeof GM_download === 'function';
 
     function dlFile(url,fname,showProg){
-        if(!url){toast('No URL for: '+fname,4000,true);return;}
+        if(!url){toast('没有下载链接：'+fname,4000,true);return;}
         // Force HTTPS on download URLs to avoid Mixed Content
         if (url && url.indexOf('http://') === 0) {
             url = 'https:' + url.substring(5);
@@ -773,14 +777,14 @@
 
         if(_dlMode==='gm' && _gmDownloadAvailable){
             // Use GM_download (Tampermonkey native download)
-            if(showProg)toast('<b>'+fname+'</b> (GM mode)',0);
+            if(showProg)toast('<b>'+fname+'</b>（油猴下载）',0);
             GM_download({
                 url:url,
                 name:fname,
                 headers:{'Referer':location.href,'Origin':location.origin},
-                onload:function(){toast(fname+' OK',3000,false,true);},
-                onerror:function(d){toast('GM ERR: '+(d&&d.error||'failed'),4000,true);},
-                ontimeout:function(){toast('GM TIMEOUT: '+fname,4000,true);}
+                onload:function(){toast(fname+' 下载完成',3000,false,true);},
+                onerror:function(d){toast('油猴下载失败：'+(d&&d.error||'未知错误'),4000,true);},
+                ontimeout:function(){toast('油猴下载超时：'+fname,4000,true);}
             });
         }else{
             // Use GM_xmlhttpRequest blob -> blob URL trigger
@@ -793,7 +797,7 @@
                 },
                 onload:function(resp){
                     if(resp.status!==200||!resp.response||resp.response.size<512){
-                        toast('ERR '+resp.status+' ('+fname+')',4000,true);
+                        toast('下载失败 '+resp.status+'（'+fname+'）',4000,true);
                         return;
                     }
                     // Try to get real filename from blob/CD header
@@ -811,10 +815,10 @@
                         if(sm)realName=cleanName(sm[1]);
                     }
                     doTrigger(URL.createObjectURL(resp.response),realName);
-                    toast((realName!==fname?'['+fname+'] ':'')+realName+' OK',3000,false,true);
+                    toast((realName!==fname?'['+fname+'] ':'')+realName+' 下载完成',3000,false,true);
                 },
-                onerror:function(){toast('NET ERR ('+fname+')',4000,true);},
-                ontimeout:function(){toast('TIMEOUT ('+fname+')',4000,true);}
+                onerror:function(){toast('网络错误（'+fname+'）',4000,true);},
+                ontimeout:function(){toast('下载超时（'+fname+'）',4000,true);}
             });
         }
     }
@@ -828,24 +832,43 @@
 
     // ====== TOGGLE DOWNLOAD MODE ======
     var _modeBtnEl = null;
+    function modeLabel() {
+        return _dlMode === 'gm' ? '油猴下载' : '浏览器下载';
+    }
+    function modeButtonText() {
+        return _dlMode === 'gm' ? '模式：油猴' : '模式：浏览器';
+    }
+    function updateModeButton() {
+        var title = _dlMode==='gm' ? '当前：油猴原生下载，点击切换为浏览器下载' : '当前：浏览器下载，点击切换为油猴原生下载';
+        if(_modeBtnEl){
+            _modeBtnEl.textContent = modeButtonText();
+            _modeBtnEl.className = 'cxdl-btn mode-btn' + (_dlMode==='browser'?' active':'');
+            _modeBtnEl.title = title;
+        }
+        try {
+            document.querySelectorAll('[data-cxdl-mode-btn]').forEach(function(btn){
+                btn.textContent = modeButtonText();
+                btn.title = title;
+                if (btn.classList.contains('cxdl-btn')) {
+                    btn.className = 'cxdl-btn mode-btn' + (_dlMode==='browser'?' active':'');
+                }
+            });
+        } catch(e) {}
+    }
     function toggleDlMode(){
         _dlMode = _dlMode==='gm' ? 'browser' : 'gm';
         try{localStorage.setItem('cxdl_dlMode',_dlMode);}catch(e){}
-        if(_modeBtnEl){
-            _modeBtnEl.textContent = _dlMode==='gm' ? '[GM]' : '[BRW]';
-            _modeBtnEl.className = 'cxdl-btn mode-btn' + (_dlMode==='browser'?' active':'');
-            _modeBtnEl.title = _dlMode==='gm' ? 'Current: GM Download (Tampermonkey native)' : 'Current: Browser Download (GM_xmlhttpRequest + blob)';
-        }
-        toast('Download mode: ' + (_dlMode==='gm'?'GM (Tampermonkey native)':'Browser (blob URL)'),3000);
+        updateModeButton();
+        toast('下载模式：' + modeLabel(),3000);
     }
 
     // ====== MODAL ======
     async function showModal(filterType){
         var rawIds=collectIds();
-        if(rawIds.length===0){toast('No resource IDs found. Go to Materials tab.',4000,true);return;}
+        if(rawIds.length===0){toast('未找到资源 ID。请进入「资料」页后点「扫描」或「缓存扫描」。',5000,true);return;}
 
-        setStatus('Fetching ('+rawIds.length+')...');
-        toast('Fetching info...',0);
+        setStatus('正在获取 '+rawIds.length+' 个资源...');
+        toast('正在获取资源信息...',0);
 
         var metas=[];
         var okCnt=0, failCnt=0;
@@ -858,16 +881,16 @@
             }else{
                 failCnt++;
             }
-            setStatus('Fetching...'+Math.round((i+1)/rawIds.length*100)+'% ('+okCnt+' ok, '+failCnt+' fail)');
+            setStatus('获取中 '+Math.round((i+1)/rawIds.length*100)+'%（成功 '+okCnt+'，失败 '+failCnt+'）');
             await delay(120);
         }
         toast('');
-        if(metas.length===0){toast('All API requests failed. Try clicking individual DL buttons.',8000,true);return;}
+        if(metas.length===0){toast('没有获取到下载链接，请刷新后重试，或尝试资源旁边的「下载」按钮。',8000,true);return;}
 
         var list=metas;
         if(filterType){
             list=metas.filter(function(mm){return mm.type===filterType;});
-            if(list.length===0){toast('No '+filterType+' files found.',3000);return;}
+            if(list.length===0){toast('没有找到 '+filterType+' 文件。',3000);return;}
         }
 
         var bg=document.createElement('div');bg.className='cxdl-modal-bg';
@@ -875,8 +898,8 @@
         var box=document.createElement('div');box.className='cxdl-modal';
 
         var hd=document.createElement('div');hd.className='cxdl-modal-hd';
-        hd.innerHTML='<span>Select Resources ('+list.length+')</span>'
-            +'<span style="font-size:20px;cursor:pointer;color:#999;font-weight:normal" onclick="this.parentElement.parentElement.parentElement.remove()">x</span>';
+        hd.innerHTML='<span>选择要下载的资源（'+list.length+' 个）</span>'
+            +'<span style="font-size:20px;cursor:pointer;color:#999;font-weight:normal" onclick="this.parentElement.parentElement.parentElement.remove()">×</span>';
 
         var bd=document.createElement('div');bd.className='cxdl-modal-bd';var ul=document.createElement('div');
 
@@ -884,7 +907,7 @@
             var row=document.createElement('div');row.className='cxdl-modal-row';
             var cb=document.createElement('input');cb.type='checkbox';cb.checked=!filterType;cb.dataset.idx=idx;
             var nm=document.createElement('span');nm.className='cxdl-modal-name';nm.textContent=m.fname;nm.title=m.fname;
-            var tg=document.createElement('span');tg.className='cxdl-modal-tag';tg.textContent=m.type+(m.err?' [FB]':'');
+            var tg=document.createElement('span');tg.className='cxdl-modal-tag';tg.textContent=m.type+(m.err?' 备用':'');
             row.appendChild(cb);row.appendChild(nm);row.appendChild(tg);
             row.onclick=function(e){if(e.target.tagName!=='INPUT')cb.checked=!cb.checked;};
             ul.appendChild(row);
@@ -892,15 +915,15 @@
 
         var act=document.createElement('div');act.className='cxdl-modal-actions';
 
-        var bA=document.createElement('button');bA.style.background='#607d8b';bA.textContent='Toggle All';
+        var bA=document.createElement('button');bA.style.background='#607d8b';bA.textContent='全选/反选';
         bA.onclick=function(){var cbs=ul.querySelectorAll('input[type=checkbox]');var allOn=Array.from(cbs).every(function(c){return c.checked;});cbs.forEach(function(c){c.checked=!allOn;});};
 
-        var bC=document.createElement('button');bC.style.background='#9e9e9e';bC.textContent='Cancel';bC.onclick=function(){bg.remove();};
+        var bC=document.createElement('button');bC.style.background='#9e9e9e';bC.textContent='取消';bC.onclick=function(){bg.remove();};
 
-        var bO=document.createElement('button');bO.style.background='#1976d2';bO.textContent='Download Selected ('+list.length+')';
+        var bO=document.createElement('button');bO.style.background='#1976d2';bO.textContent='下载所选（'+list.length+'）';
         bO.onclick=function(){
             var sel=[];ul.querySelectorAll('input:checked').forEach(function(cb){var ix=parseInt(cb.dataset.idx);if(!isNaN(ix)&&list[ix])sel.push(list[ix]);});
-            bg.remove();if(sel.length===0){alert('Select at least one item.');return;}
+            bg.remove();if(sel.length===0){alert('请至少选择一个资源。');return;}
             batchDl(sel);
         };
         act.appendChild(bA);act.appendChild(bC);act.appendChild(bO);
@@ -908,13 +931,13 @@
     }
 
     async function batchDl(resources){
-        toast('Downloading '+resources.length+' files...',0);
+        toast('开始下载 '+resources.length+' 个文件...',0);
         var ok=0;
         for(var i=0;i<resources.length;i++){
             var res=resources[i];
             if(res.err==='fallback_url'){
                 window.open(res.url,'_blank');
-                toast(res.fname+' opened in tab',2500);
+                toast(res.fname+' 已在新标签页打开',2500);
                 ok++;
             }else{
                 dlFile(res.url,res.fname,false);
@@ -923,18 +946,18 @@
             if((i+1)%3===0||i===resources.length-1)toast((i+1)+'/'+resources.length,300);
             await delay(600);
         }
-        setTimeout(function(){toast('Done: '+ok+'/'+resources.length+' downloads triggered.',5000,false,true);},800);
+        setTimeout(function(){toast('完成：已触发 '+ok+'/'+resources.length+' 个下载',5000,false,true);},800);
     }
 
     async function dlAll(){
-        var rawIds=collectIds();if(rawIds.length===0)return;
-        toast('Fetching all...',0);var all=[];
+        var rawIds=collectIds();if(rawIds.length===0){toast('未找到资源，请先进入「资料」页。',4000,true);return;}
+        toast('正在获取全部资源...',0);var all=[];
         for(var i=0;i<rawIds.length;i++){
             var m=await fetchMeta(rawIds[i].id,rawIds[i].name);
             if(m.url&&(!m.err||m.err==='fallback_url'))all.push(m);
             setStatus(Math.round((i+1)/rawIds.length*100)+'%');await delay(120);
         }
-        if(all.length===0){toast('Cannot get links. Try later.',4000,true);return;}batchDl(all);
+        if(all.length===0){toast('无法获取下载链接，请稍后重试。',4000,true);return;}batchDl(all);
     }
 
     function scanPageCaches(){
@@ -952,7 +975,7 @@
             }
         } catch(e2) {}
         found = collectIds();
-        setStatus(found.length ? (found.length + ' resources | cache scanned') : 'No IDs - switch to Materials tab');
+        setStatus(found.length ? (found.length + ' 个资源 | 缓存扫描完成') : '未找到资源，请切到「资料」页');
         return found;
     }
 
@@ -964,22 +987,72 @@
         var frameCount = 0;
         Object.keys(_frameIds).forEach(function(k){ frameCount += (_frameIds[k] || []).length; });
         var st = panel.querySelector('.cxdl-panel-status');
-        if (st) st.innerHTML = '<b>' + ids.length + '</b> resources<br>DOM ' + localCount + ' / API ' + apiCount + ' / iframe ' + frameCount;
+        if (st) st.innerHTML = '<b>' + ids.length + '</b> 个资源<br>页面 ' + localCount + ' / 接口 ' + apiCount + ' / 框架 ' + frameCount;
+    }
+
+    var HELP_SEEN_KEY = 'cxdl_help_seen_v219';
+    var PANEL_ID = '__cxdl_panel_v219';
+
+    function showHelpModal(force) {
+        if (!IS_TOP_WINDOW) return;
+        try {
+            if (!force && localStorage.getItem(HELP_SEEN_KEY) === '1') return;
+            if (!force) localStorage.setItem(HELP_SEEN_KEY, '1');
+        } catch(e) {}
+
+        withBody(function(){
+            var old = document.getElementById('__cxdl_help_v219');
+            if (old) old.remove();
+
+            var bg=document.createElement('div');
+            bg.id='__cxdl_help_v219';
+            bg.className='cxdl-modal-bg';
+            bg.onclick=function(e){if(e.target===bg)bg.remove();};
+
+            var box=document.createElement('div');
+            box.className='cxdl-modal';
+
+            var hd=document.createElement('div');
+            hd.className='cxdl-modal-hd';
+            hd.innerHTML='<span>学习通下载器使用说明</span><span style="font-size:20px;cursor:pointer;color:#999;font-weight:normal" onclick="this.parentElement.parentElement.parentElement.remove()">×</span>';
+
+            var bd=document.createElement('div');
+            bd.className='cxdl-modal-bd';
+            bd.innerHTML=[
+                '<div style="font-size:13px;line-height:1.8;color:#333">',
+                '<p style="margin:0 0 8px">进入课程的「资料」页后，顶部蓝色工具栏会自动扫描资源。</p>',
+                '<p style="margin:0 0 8px">如果显示未找到资源，先点「扫描」，仍没有就点右下角「下载」→「缓存扫描」。</p>',
+                '<p style="margin:0 0 8px">点「资源列表」可以打开文件清单，勾选后点「下载所选」。文件名会尽量保留学习通原始名称。</p>',
+                '<p style="margin:0 0 8px">「全部下载」会批量触发当前页面已识别资源；「PDF」只显示 PDF 文件。</p>',
+                '<p style="margin:0">默认使用「油猴下载」。如果下载异常，可切换到「浏览器下载」再试。</p>',
+                '</div>'
+            ].join('');
+
+            var act=document.createElement('div');
+            act.className='cxdl-modal-actions';
+            var ok=document.createElement('button');
+            ok.style.background='#1976d2';
+            ok.textContent='知道了';
+            ok.onclick=function(){bg.remove();};
+            act.appendChild(ok);
+
+            box.appendChild(hd);box.appendChild(bd);box.appendChild(act);bg.appendChild(box);document.body.appendChild(bg);
+        });
     }
 
     function closeFloatPanel() {
-        var old = document.getElementById('__cxdl_panel_v217');
+        var old = document.getElementById(PANEL_ID);
         if (old) old.remove();
     }
 
     function toggleFloatPanel() {
-        var old = document.getElementById('__cxdl_panel_v217');
+        var old = document.getElementById(PANEL_ID);
         if (old) { old.remove(); return; }
         var panel = document.createElement('div');
-        panel.id = '__cxdl_panel_v217';
+        panel.id = PANEL_ID;
         panel.className = 'cxdl-panel';
-        panel.innerHTML = '<div class="cxdl-panel-hd"><span>ChaoXing Download</span><button class="cxdl-panel-close" type="button">x</button></div>'
-            + '<div class="cxdl-panel-status">Scanning...</div>'
+        panel.innerHTML = '<div class="cxdl-panel-hd"><span>学习通下载</span><button class="cxdl-panel-close" type="button">×</button></div>'
+            + '<div class="cxdl-panel-status">正在扫描...</div>'
             + '<div class="cxdl-panel-actions"></div>';
         panel.querySelector('.cxdl-panel-close').onclick = closeFloatPanel;
         var acts = panel.querySelector('.cxdl-panel-actions');
@@ -995,16 +1068,20 @@
                 setTimeout(function(){ updatePanelStatus(panel); }, 80);
             };
             acts.appendChild(b);
+            return b;
         }
-        pbtn('Scan', 'gray', doScan);
-        pbtn('Resources', '', function(){ showModal(null); });
+        pbtn('扫描', 'gray', doScan);
+        pbtn('资源列表', '', function(){ showModal(null); });
         pbtn('PDF', '', function(){ showModal('PDF'); });
-        pbtn('All DL', 'warn', dlAll);
-        pbtn('API Cache', 'gray', function(){
+        pbtn('全部下载', 'warn', dlAll);
+        pbtn('缓存扫描', 'gray', function(){
             scanPageCaches();
-            toast('Cache scan done', 2200, false, true);
+            toast('缓存扫描完成', 2200, false, true);
         });
-        pbtn(_dlMode === 'gm' ? 'Mode GM' : 'Mode BRW', 'gray', toggleDlMode);
+        pbtn('使用说明', 'gray', function(){ showHelpModal(true); });
+        var panelModeBtn = pbtn(modeButtonText(), 'gray', toggleDlMode);
+        panelModeBtn.setAttribute('data-cxdl-mode-btn', '1');
+        panelModeBtn.title = _dlMode==='gm' ? '当前：油猴原生下载，点击切换为浏览器下载' : '当前：浏览器下载，点击切换为油猴原生下载';
         document.body.appendChild(panel);
         scanPageCaches();
         updatePanelStatus(panel);
@@ -1027,21 +1104,21 @@
                 if(!firstId)continue;
 
                 var wrap=document.createElement('span');wrap.className='cxdl-injbtn-wrap';
-                var btn=document.createElement('button');btn.className='cxdl-injbtn';btn.textContent='DL';
+                var btn=document.createElement('button');btn.className='cxdl-injbtn';btn.textContent='下载';
                 var fHintName=guessFilename(cont);
                 (function(id,b,hint){
                     b.onclick=function(ev){
                         ev.stopPropagation();ev.preventDefault();
-                        b.textContent='...';b.style.background='#999';
+                        b.textContent='获取中';b.style.background='#999';
                         (async function(){
                             var m=await fetchMeta(id,hint);
-                            if(!m.url){b.textContent='FAIL';b.style.background='#f44336';toast('Fail:'+m.fname,3500,true);}
+                            if(!m.url){b.textContent='失败';b.style.background='#f44336';toast('无法下载：'+m.fname,3500,true);}
                             else if(m.err==='fallback_url'){
-                                b.textContent='TAB';b.style.background='#ff9800';
+                                b.textContent='打开';b.style.background='#ff9800';
                                 window.open(m.url,'_blank');
-                                setTimeout(function(){b.textContent='DL';b.style.background='#1976d2';},5000);
+                                setTimeout(function(){b.textContent='下载';b.style.background='#1976d2';},5000);
                             }
-                            else{b.textContent='OK';b.style.background='#4caf50';dlFile(m.url,m.fname,true);setTimeout(function(){b.textContent='DL';b.style.background='#1976d2';},4000);}
+                            else{b.textContent='完成';b.style.background='#4caf50';dlFile(m.url,m.fname,true);setTimeout(function(){b.textContent='下载';b.style.background='#1976d2';},4000);}
                         })();
                     };
                 })(firstId,btn,fHintName);
@@ -1055,15 +1132,15 @@
                 if(/\.(pptx?|docx?|xlsx?|pdf|mp4)$/i.test(txt)){
                     var lIds=collectIds();if(lIds.length>0){
                         var wrap=document.createElement('span');wrap.className='cxdl-injbtn-wrap';
-                        var btn=document.createElement('button');btn.className='cxdl-injbtn';btn.textContent='DL';
+                        var btn=document.createElement('button');btn.className='cxdl-injbtn';btn.textContent='下载';
                         btn.onclick=function(ev){ev.stopPropagation();var i2=collectIds();if(i2.length>0)(async function(){
-                            btn.textContent='...';var m=await fetchMeta(i2[0].id,i2[0].name);
-                            if(!m.url){btn.textContent='X';btn.style.background='#f44336';}
+                            btn.textContent='获取中';var m=await fetchMeta(i2[0].id,i2[0].name);
+                            if(!m.url){btn.textContent='失败';btn.style.background='#f44336';}
                             else if(m.err==='fallback_url'){
-                                btn.textContent='TAB';window.open(m.url,'_blank');
-                                setTimeout(function(){btn.textContent='DL';btn.style.background='#1976d2';},5000);
+                                btn.textContent='打开';window.open(m.url,'_blank');
+                                setTimeout(function(){btn.textContent='下载';btn.style.background='#1976d2';},5000);
                             }
-                            else{btn.textContent='OK';btn.style.background='#4caf50';dlFile(m.url,m.fname,true);setTimeout(function(){btn.textContent='DL';btn.style.background='#1976d2';},4000);}
+                            else{btn.textContent='完成';btn.style.background='#4caf50';dlFile(m.url,m.fname,true);setTimeout(function(){btn.textContent='下载';btn.style.background='#1976d2';},4000);}
                         })();};
                         wrap.appendChild(btn);row.appendChild(wrap);
                     }
@@ -1076,11 +1153,11 @@
     var _barInstance = null;  // track our single toolbar instance
     function buildBar(){
         try {
-            if (unsafeWindow.__cxdl_ui_lock_v217) {
+            if (unsafeWindow.__cxdl_ui_lock_v219) {
                 setTimeout(doScan, 600);
                 return;
             }
-            unsafeWindow.__cxdl_ui_lock_v217 = true;
+            unsafeWindow.__cxdl_ui_lock_v219 = true;
         } catch(e) {}
         if (_isDuplicateRun) {
             _barInstance = document.getElementById(OUR_BAR_ID);
@@ -1096,24 +1173,24 @@
         var bar=document.createElement('div');
         bar.id=OUR_BAR_ID;
         bar.className='cxdl-bar';
-        bar.setAttribute('data-cxdl-version', '2.1.7');
-        bar.innerHTML='<span class="title">[CXDL]</span><span id="_cxdl_st2" class="status">Loading...</span>';
+        bar.setAttribute('data-cxdl-version', '2.1.9');
+        bar.innerHTML='<span class="title">[学习通下载]</span><span id="_cxdl_st2" class="status">加载中...</span>';
 
         function mkBtn(label,cls,hnd){
             var b=document.createElement('button');b.className='cxdl-btn'+(cls?' '+cls:'');b.textContent=label;b.addEventListener('click',hnd);return b;
         }
-        bar.appendChild(mkBtn('Scan','',doScan));
-        bar.appendChild(mkBtn('Select DL','pri',function(){showModal(null);}));
+        bar.appendChild(mkBtn('扫描','',doScan));
+        bar.appendChild(mkBtn('资源列表','pri',function(){showModal(null);}));
         bar.appendChild(mkBtn('PPT','warn',function(){showModal('PPT');}));
         bar.appendChild(mkBtn('PDF','info',function(){showModal('PDF');}));
         bar.appendChild(mkBtn('DOC','',function(){showModal('DOC');}));
-        bar.appendChild(mkBtn('All DL','pri',dlAll));
+        bar.appendChild(mkBtn('全部下载','pri',dlAll));
 
         _modeBtnEl=document.createElement('button');
+        _modeBtnEl.setAttribute('data-cxdl-mode-btn', '1');
         _modeBtnEl.className='cxdl-btn mode-btn'+(_dlMode==='browser'?' active':'');
-        _modeBtnEl.textContent=_dlMode==='gm'?'[GM]':'[BRW]';
-        _modeBtnEl.title=_dlMode==='gm'?'GM Download (Tampermonkey native) - click to switch':'Browser Download (blob URL) - click to switch';
         _modeBtnEl.addEventListener('click',toggleDlMode);
+        updateModeButton();
         bar.appendChild(_modeBtnEl);
 
         withBody(function(){
@@ -1127,26 +1204,27 @@
         console.log('[CXDL] Bar created and forced visible:', bar.id, 'size:', bar.getBoundingClientRect().width + 'x' + bar.getBoundingClientRect().height);
 
         // ====== innerHTML GUARD: protect against KCDL/other scripts overwriting our bar ======
-        var _barTitleText = '[CXDL]'; // what our title span should show
+        var _barTitleText = '[学习通下载]'; // what our title span should show
         function guardBarHTML() {
             try {
                 var b = document.getElementById(OUR_BAR_ID);
                 if (!b) return;
                 // Check if title was hijacked (shows [KCDL] or other non-CXDL text)
                 var titleSpan = b.querySelector('.title');
-                if (titleSpan && titleSpan.textContent.indexOf('[CXDL]') !== 0) {
-                    console.log('[CXDL-GUARD] Title hijacked! Was:', titleSpan.textContent, '- restoring to [CXDL]');
+                if (titleSpan && titleSpan.textContent.indexOf('[学习通下载]') !== 0) {
+                    console.log('[CXDL-GUARD] Title hijacked! Was:', titleSpan.textContent, '- restoring');
                     titleSpan.textContent = _barTitleText;
                 }
                 // Ensure all expected buttons exist
                 if (!b.querySelector('.mode-btn')) {
                     // Re-add mode button if missing
                     var mb = document.createElement('button');
+                    mb.setAttribute('data-cxdl-mode-btn', '1');
                     mb.className='cxdl-btn mode-btn'+(_dlMode==='browser'?' active':'');
-                    mb.textContent=_dlMode==='gm'?'[GM]':'[BRW]';
-                    mb.title=_dlMode==='gm'?'GM Download':'Browser Download';
                     mb.addEventListener('click',toggleDlMode);
                     b.appendChild(mb);
+                    _modeBtnEl = mb;
+                    updateModeButton();
                     console.log('[CXDL-GUARD] Restored mode button');
                 }
             } catch(gerr) {}
@@ -1160,14 +1238,14 @@
             if(!document.getElementById(OUR_FLOAT_ID)){
                 var fb=document.createElement('button');
                 fb.id=OUR_FLOAT_ID;
-                fb.className='cxdl-float';fb.textContent='DL';fb.title='Open ChaoXing download panel';
+                fb.className='cxdl-float';fb.textContent='下载';fb.title='打开学习通下载面板';
                 fb.addEventListener('click',function(){
                     toggleFloatPanel();
                 });
                 document.body.appendChild(fb);
             }
         });
-        setStatus('Waiting...');
+        setStatus('等待页面加载...');
         setTimeout(doScan,2500);
     }
 
@@ -1177,10 +1255,10 @@
     function killDupes() {
         try {
             nukeForeignToolbars(); // always clean foreign first
-            document.querySelectorAll('#__cxdl_bar_unique_v210,#__cxdl_bar_unique_v211,#__cxdl_bar_unique_v212,#__cxdl_bar_unique_v213,#__cxdl_bar_unique_v214,#__cxdl_bar_unique_v215,#__cxdl_bar_unique_v216,#_cxdl_bar_v2,#_cxdl_bar,#_cxdl_bar2').forEach(function(el){
+            document.querySelectorAll('#__cxdl_bar_unique_v210,#__cxdl_bar_unique_v211,#__cxdl_bar_unique_v212,#__cxdl_bar_unique_v213,#__cxdl_bar_unique_v214,#__cxdl_bar_unique_v215,#__cxdl_bar_unique_v216,#__cxdl_bar_unique_v217,#__cxdl_bar_unique_v218,#_cxdl_bar_v2,#_cxdl_bar,#_cxdl_bar2').forEach(function(el){
                 if (el.id !== OUR_BAR_ID) el.remove();
             });
-            document.querySelectorAll('#__cxdl_float_unique_v210,#__cxdl_float_unique_v211,#__cxdl_float_unique_v212,#__cxdl_float_unique_v213,#__cxdl_float_unique_v214,#__cxdl_float_unique_v215,#__cxdl_float_unique_v216,#_cxdl_fb,#_cxdl_float').forEach(function(el){
+            document.querySelectorAll('#__cxdl_float_unique_v210,#__cxdl_float_unique_v211,#__cxdl_float_unique_v212,#__cxdl_float_unique_v213,#__cxdl_float_unique_v214,#__cxdl_float_unique_v215,#__cxdl_float_unique_v216,#__cxdl_float_unique_v217,#__cxdl_float_unique_v218,#_cxdl_fb,#_cxdl_float').forEach(function(el){
                 if (el.id !== OUR_FLOAT_ID) el.remove();
             });
             var bars = document.querySelectorAll('.cxdl-bar');
@@ -1214,8 +1292,8 @@
     function doScan(){
         killDupes();
         var ids=collectIds();unsafeWindow._cxdl_ids=ids.map(function(x){return x.id;});injectBtns();
-        setStatus(ids.length?(ids.length+' resources | click buttons to DL'):'No IDs - go to Materials tab & click Scan');
-        console.log('[CXDL] v2.1.7 scan:',ids.length);
+        setStatus(ids.length?(ids.length+' 个资源 | 可点「资源列表」下载'):'未找到资源，请进入「资料」页后点「扫描」');
+        console.log('[CXDL] v2.1.9 scan:',ids.length);
     }
 
     // ====== ENTRY ======
@@ -1231,7 +1309,7 @@
                 else document.addEventListener('DOMContentLoaded',function(){ frameObs.observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['objectid','data-objectid']}); });
             } catch(e) {}
         }
-        console.log('[CXDL] v2.1.7 iframe worker loaded', location.href);
+        console.log('[CXDL] v2.1.9 iframe worker loaded', location.href);
         return;
     }
     if(isTargetPage()){
@@ -1239,6 +1317,7 @@
         withBody(function(){
             try{_obs.observe(document.body,{childList:true,subtree:true});}catch(e){}
         });
+        setTimeout(function(){ showHelpModal(false); }, 1400);
     }
-    console.log('[CXDL] v2.1.7 loaded | GM_download available:',_gmDownloadAvailable,'| mode:',_dlMode);
+    console.log('[CXDL] v2.1.9 loaded | GM_download available:',_gmDownloadAvailable,'| mode:',_dlMode);
 })();
