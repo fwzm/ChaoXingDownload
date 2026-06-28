@@ -2,7 +2,7 @@
 // @name         学习通课程资源下载器
 // @name:en      ChaoXing Course Downloader
 // @namespace    https://github.com/fwzm/ChaoXingDownload
-// @version      2.2.3
+// @version      2.2.4
 // @description  下载学习通课程资源文件，支持 PPT/PDF/DOC/视频等资料
 // @description:en Download course resources from ChaoXing (mooc2-ans) - PPT/PDF/DOC/Video
 // @author       fwzm
@@ -828,17 +828,29 @@
     }
 
     function directDownload(url,fname,showProg){
-        var a=document.createElement('a');
-        a.style.display='none';
-        a.href=url;
-        a.download=fname||'';
-        a.target='_blank';
-        a.rel='noopener';
-        a.referrerPolicy='origin-when-cross-origin';
-        a.setAttribute('data-cxdl-direct-download','1');
-        document.body.appendChild(a);
-        a.click();
-        setTimeout(function(){if(a.parentNode)a.parentNode.removeChild(a);},2000);
+        // Use iframe method: more reliable than <a> click for batch downloads
+        // <a> with _blank gets blocked as popup by Chrome when triggered rapidly
+        try {
+            var iframe = document.createElement('iframe');
+            iframe.style.display = 'none';
+            iframe.src = url;
+            iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-downloads');
+            iframe.setAttribute('data-cxdl-direct-download', '1');
+            document.body.appendChild(iframe);
+            setTimeout(function(){ if(iframe.parentNode) iframe.parentNode.removeChild(iframe); }, 10000);
+        } catch(e) {
+            // Fallback: traditional <a> click
+            var a=document.createElement('a');
+            a.style.display='none';
+            a.href=url;
+            a.download=fname||'';
+            a.rel='noopener';
+            a.referrerPolicy='origin-when-cross-origin';
+            a.setAttribute('data-cxdl-direct-download','1');
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(function(){if(a.parentNode)a.parentNode.removeChild(a);},2000);
+        }
         if(showProg)toast(fname+' 已交给浏览器/IDM 下载',3200,false,true);
     }
 
