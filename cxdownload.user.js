@@ -2,7 +2,7 @@
 // @name         学习通课程资源下载器
 // @name:en      ChaoXing Course Downloader
 // @namespace    https://github.com/fwzm/ChaoXingDownload
-// @version      2.2.1
+// @version      2.2.2
 // @description  下载学习通课程资源文件，支持 PPT/PDF/DOC/视频等资料
 // @description:en Download course resources from ChaoXing (mooc2-ans) - PPT/PDF/DOC/Video
 // @author       fwzm
@@ -799,6 +799,34 @@
 
     var _gmDownloadAvailable = typeof GM_download === 'function';
 
+    // GM_download whitelist: only these domains (or their subdomains) are allowed by @connect
+    var _gmWhitelistDomains = [
+        'chaoxing.com',
+        'xueyinonline.com',
+        'edu.cn',
+        'ananas.chaoxing.com',
+        'mooc1.chaoxing.com',
+        'mooc1-api.chaoxing.com',
+        'mooc2-ans.chaoxing.com'
+    ];
+
+    function isUrlInWhitelist(url) {
+        if (!url) return false;
+        try {
+            var host = (new URL(url, location.origin)).hostname.toLowerCase();
+            // Check exact match or subdomain match for each whitelist entry
+            for (var i = 0; i < _gmWhitelistDomains.length; i++) {
+                var domain = _gmWhitelistDomains[i].toLowerCase();
+                if (host === domain || host.indexOf('.' + domain) === host.length - domain.length - 1) {
+                    return true;
+                }
+            }
+            return false;
+        } catch(e) {
+            return false;
+        }
+    }
+
     function directDownload(url,fname,showProg){
         var a=document.createElement('a');
         a.style.display='none';
@@ -831,6 +859,12 @@
         }
 
         if(_dlMode==='gm' && _gmDownloadAvailable){
+            // Pre-check: if URL domain is NOT in @connect whitelist, skip GM_download to avoid not_whitelisted popup
+            if (!isUrlInWhitelist(url)) {
+                console.log('[CXDL] URL not in GM whitelist, fallback to browser: ' + url);
+                fallbackToDirectDownload(url, fname, '域名不在白名单');
+                return;
+            }
             // Use GM_download (Tampermonkey native download)
             if(showProg)toast('<b>'+fname+'</b>（油猴下载）',0);
             try{
