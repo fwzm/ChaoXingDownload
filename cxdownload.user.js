@@ -2,7 +2,7 @@
 // @name         学习通课程资源下载器
 // @name:en      ChaoXing Course Downloader
 // @namespace    https://github.com/fwzm/ChaoXingDownload
-// @version      2.2.2
+// @version      2.2.3
 // @description  下载学习通课程资源文件，支持 PPT/PDF/DOC/视频等资料
 // @description:en Download course resources from ChaoXing (mooc2-ans) - PPT/PDF/DOC/Video
 // @author       fwzm
@@ -1052,22 +1052,27 @@
     }
 
     async function batchDl(resources){
-        toast('开始下载 '+resources.length+' 个文件...',0);
+        toast('开始下载 '+resources.length+' 个文件，请留意浏览器下载提示...',0);
         var ok=0;
-        for(var i=0;i<resources.length;i++){
+        var total=resources.length;
+        for(var i=0;i<total;i++){
             var res=resources[i];
             if(res.err==='fallback_url'){
                 directDownload(res.url,res.fname,false);
-                toast(res.fname+' 已交给浏览器/IDM',2500);
                 ok++;
             }else{
                 dlFile(res.url,res.fname,false);
                 ok++;
             }
-            if((i+1)%3===0||i===resources.length-1)toast((i+1)+'/'+resources.length,300);
-            await delay(600);
+            var done=i+1;
+            if(done<total){
+                toast(done+'/'+total+' 已触发，等待下一个...',1200);
+                await delay(2000); // 2s gap to avoid browser blocking multiple downloads
+            }else{
+                toast(done+'/'+total+' 全部已触发',2000);
+            }
         }
-        setTimeout(function(){toast('完成：已触发 '+ok+'/'+resources.length+' 个下载',5000,false,true);},800);
+        setTimeout(function(){toast('完成：已触发 '+ok+'/'+total+' 个下载。若部分未下载，请检查浏览器地址栏是否拦截了多个文件下载。',6000,false,true);},800);
     }
 
     async function dlAll(){
